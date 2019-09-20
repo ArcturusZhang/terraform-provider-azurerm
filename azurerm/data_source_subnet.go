@@ -56,6 +56,11 @@ func dataSourceArmSubnet() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+
+			"nat_gateway_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -101,6 +106,10 @@ func dataSourceArmSubnetRead(d *schema.ResourceData, meta interface{}) error {
 		}
 
 		if err := d.Set("service_endpoints", flattenSubnetServiceEndpoints(props.ServiceEndpoints)); err != nil {
+			return err
+		}
+
+		if err := d.Set("nat_gateway_id", flattenSubnetNatGateway(props.NatGateway)); err != nil {
 			return err
 		}
 	}

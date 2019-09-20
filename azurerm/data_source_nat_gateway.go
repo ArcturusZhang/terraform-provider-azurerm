@@ -30,31 +30,47 @@ func dataSourceArmNatGateway() *schema.Resource {
 				Computed: true,
 			},
 
-			"public_ip_addresses": {
+			"public_ip_address_ids": {
 				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
 			},
 
-			"public_ip_prefixes": {
+			"public_ip_prefix_ids": {
 				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
 			},
+
+			// "public_ip_addresses": {
+			// 	Type:     schema.TypeList,
+			// 	Computed: true,
+			// 	Elem: &schema.Resource{
+			// 		Schema: map[string]*schema.Schema{
+			// 			"id": {
+			// 				Type:     schema.TypeString,
+			// 				Computed: true,
+			// 			},
+			// 		},
+			// 	},
+			// },
+
+			// "public_ip_prefixes": {
+			// 	Type:     schema.TypeList,
+			// 	Computed: true,
+			// 	Elem: &schema.Resource{
+			// 		Schema: map[string]*schema.Schema{
+			// 			"id": {
+			// 				Type:     schema.TypeString,
+			// 				Computed: true,
+			// 			},
+			// 		},
+			// 	},
+			// },
 
 			"resource_guid": {
 				Type:     schema.TypeString,
@@ -62,16 +78,8 @@ func dataSourceArmNatGateway() *schema.Resource {
 			},
 
 			"sku": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeString,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
 			},
 
 			"subnets": {
@@ -123,25 +131,23 @@ func dataSourceArmNatGatewayRead(d *schema.ResourceData, meta interface{}) error
 	d.SetId(*resp.ID)
 
 	d.Set("name", resp.Name)
+	d.Set("sku", resp.Sku.Name)
 	d.Set("resource_group_name", resourceGroup)
 	if location := resp.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 	if natGatewayPropertiesFormat := resp.NatGatewayPropertiesFormat; natGatewayPropertiesFormat != nil {
 		d.Set("idle_timeout_in_minutes", natGatewayPropertiesFormat.IdleTimeoutInMinutes)
-		if err := d.Set("public_ip_addresses", flattenArmNatGatewaySubResource(natGatewayPropertiesFormat.PublicIPAddresses)); err != nil {
-			return fmt.Errorf("Error setting `public_ip_addresses`: %+v", err)
+		if err := d.Set("public_ip_address_ids", flattenArmNatGatewayIPSubResource(natGatewayPropertiesFormat.PublicIPAddresses)); err != nil {
+			return fmt.Errorf("Error setting `public_ip_address_ids`: %+v", err)
 		}
-		if err := d.Set("public_ip_prefixes", flattenArmNatGatewaySubResource(natGatewayPropertiesFormat.PublicIPPrefixes)); err != nil {
-			return fmt.Errorf("Error setting `public_ip_prefixes`: %+v", err)
+		if err := d.Set("public_ip_prefix_ids", flattenArmNatGatewayIPSubResource(natGatewayPropertiesFormat.PublicIPPrefixes)); err != nil {
+			return fmt.Errorf("Error setting `public_ip_prefix_ids`: %+v", err)
 		}
 		d.Set("resource_guid", natGatewayPropertiesFormat.ResourceGUID)
 		if err := d.Set("subnets", flattenArmNatGatewaySubResource(natGatewayPropertiesFormat.Subnets)); err != nil {
 			return fmt.Errorf("Error setting `subnets`: %+v", err)
 		}
-	}
-	if err := d.Set("sku", flattenArmNatGatewayNatGatewaySku(resp.Sku)); err != nil {
-		return fmt.Errorf("Error setting `sku`: %+v", err)
 	}
 	d.Set("type", resp.Type)
 	d.Set("zones", utils.FlattenStringSlice(resp.Zones))

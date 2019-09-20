@@ -44,31 +44,47 @@ func resourceArmNatGateway() *schema.Resource {
 				Optional: true,
 			},
 
-			"public_ip_addresses": {
+			"public_ip_address_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-					},
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
 			},
 
-			"public_ip_prefixes": {
+			"public_ip_prefix_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-					},
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
 			},
+
+			// "public_ip_addresses": {
+			// 	Type:     schema.TypeList,
+			// 	Optional: true,
+			// 	Elem: &schema.Resource{
+			// 		Schema: map[string]*schema.Schema{
+			// 			"id": {
+			// 				Type:     schema.TypeString,
+			// 				Optional: true,
+			// 			},
+			// 		},
+			// 	},
+			// },
+
+			// "public_ip_prefixes": {
+			// 	Type:     schema.TypeList,
+			// 	Optional: true,
+			// 	Elem: &schema.Resource{
+			// 		Schema: map[string]*schema.Schema{
+			// 			"id": {
+			// 				Type:     schema.TypeString,
+			// 				Optional: true,
+			// 			},
+			// 		},
+			// 	},
+			// },
 
 			"resource_guid": {
 				Type:     schema.TypeString,
@@ -76,21 +92,12 @@ func resourceArmNatGateway() *schema.Resource {
 			},
 
 			"sku": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeString,
 				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(network.Standard),
-							}, false),
-							Default: string(network.Standard),
-						},
-					},
-				},
+				ValidateFunc: validation.StringInSlice([]string{
+					string(network.Standard),
+				}, false),
+				Default: string(network.Standard),
 			},
 
 			"tags": tags.Schema(),
@@ -147,10 +154,10 @@ func resourceArmNatGatewayCreateUpdate(d *schema.ResourceData, meta interface{})
 	id := d.Get("id").(string)
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	idleTimeoutInMinutes := d.Get("idle_timeout_in_minutes").(int)
-	publicIpAddresses := d.Get("public_ip_addresses").([]interface{})
-	publicIpPrefixes := d.Get("public_ip_prefixes").([]interface{})
+	publicIpAddressIds := d.Get("public_ip_address_ids").([]interface{})
+	publicIpPrefixIds := d.Get("public_ip_prefix_ids").([]interface{})
 	resourceGuid := d.Get("resource_guid").(string)
-	sku := d.Get("sku").([]interface{})
+	sku := d.Get("sku").(string)
 	zones := d.Get("zones").([]interface{})
 	t := d.Get("tags").(map[string]interface{})
 
@@ -159,11 +166,13 @@ func resourceArmNatGatewayCreateUpdate(d *schema.ResourceData, meta interface{})
 		Location: utils.String(location),
 		NatGatewayPropertiesFormat: &network.NatGatewayPropertiesFormat{
 			IdleTimeoutInMinutes: utils.Int32(int32(idleTimeoutInMinutes)),
-			PublicIPAddresses:    expandArmNatGatewaySubResource(publicIpAddresses),
-			PublicIPPrefixes:     expandArmNatGatewaySubResource(publicIpPrefixes),
+			PublicIPAddresses:    expandArmNatGatewayIPSubResource(publicIpAddressIds),
+			PublicIPPrefixes:     expandArmNatGatewayIPSubResource(publicIpPrefixIds),
 			ResourceGUID:         utils.String(resourceGuid),
 		},
-		Sku:   expandArmNatGatewayNatGatewaySku(sku),
+		Sku: &network.NatGatewaySku{
+			Name: network.NatGatewaySkuName(sku),
+		},
 		Tags:  tags.Expand(t),
 		Zones: utils.ExpandStringSlice(zones),
 	}
@@ -210,25 +219,23 @@ func resourceArmNatGatewayRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Set("name", resp.Name)
+	d.Set("sku", resp.Sku.Name)
 	d.Set("resource_group_name", resourceGroup)
 	if location := resp.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 	if natGatewayPropertiesFormat := resp.NatGatewayPropertiesFormat; natGatewayPropertiesFormat != nil {
 		d.Set("idle_timeout_in_minutes", natGatewayPropertiesFormat.IdleTimeoutInMinutes)
-		if err := d.Set("public_ip_addresses", flattenArmNatGatewaySubResource(natGatewayPropertiesFormat.PublicIPAddresses)); err != nil {
-			return fmt.Errorf("Error setting `public_ip_addresses`: %+v", err)
+		if err := d.Set("public_ip_address_ids", flattenArmNatGatewayIPSubResource(natGatewayPropertiesFormat.PublicIPAddresses)); err != nil {
+			return fmt.Errorf("Error setting `public_ip_address_ids`: %+v", err)
 		}
-		if err := d.Set("public_ip_prefixes", flattenArmNatGatewaySubResource(natGatewayPropertiesFormat.PublicIPPrefixes)); err != nil {
-			return fmt.Errorf("Error setting `public_ip_prefixes`: %+v", err)
+		if err := d.Set("public_ip_prefix_ids", flattenArmNatGatewayIPSubResource(natGatewayPropertiesFormat.PublicIPPrefixes)); err != nil {
+			return fmt.Errorf("Error setting `public_ip_prefix_ids`: %+v", err)
 		}
 		d.Set("resource_guid", natGatewayPropertiesFormat.ResourceGUID)
 		if err := d.Set("subnets", flattenArmNatGatewaySubResource(natGatewayPropertiesFormat.Subnets)); err != nil {
 			return fmt.Errorf("Error setting `subnets`: %+v", err)
 		}
-	}
-	if err := d.Set("sku", flattenArmNatGatewayNatGatewaySku(resp.Sku)); err != nil {
-		return fmt.Errorf("Error setting `sku`: %+v", err)
 	}
 	d.Set("type", resp.Type)
 	d.Set("zones", utils.FlattenStringSlice(resp.Zones))
@@ -280,18 +287,18 @@ func expandArmNatGatewaySubResource(input []interface{}) *[]network.SubResource 
 	return &results
 }
 
-func expandArmNatGatewayNatGatewaySku(input []interface{}) *network.NatGatewaySku {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
+func expandArmNatGatewayIPSubResource(input []interface{}) *[]network.SubResource {
+	results := make([]network.SubResource, 0)
+	for _, item := range input {
+		id := item.(string)
 
-	name := v["name"].(string)
+		result := network.SubResource{
+			ID: utils.String(id),
+		}
 
-	result := network.NatGatewaySku{
-		Name: network.NatGatewaySkuName(name),
+		results = append(results, result)
 	}
-	return &result
+	return &results
 }
 
 func flattenArmNatGatewaySubResource(input *[]network.SubResource) []interface{} {
@@ -313,6 +320,19 @@ func flattenArmNatGatewaySubResource(input *[]network.SubResource) []interface{}
 	return results
 }
 
+func flattenArmNatGatewayIPSubResource(input *[]network.SubResource) []interface{} {
+	results := make([]interface{}, 0)
+	if input == nil {
+		return results
+	}
+
+	for _, item := range *input {
+		results = append(results, *item.ID)
+	}
+
+	return results
+}
+
 // func flattenArmNatGatewaySubResource(input *[]network.SubResource) []interface{} {
 // 	results := make([]interface{}, 0)
 // 	if input == nil {
@@ -327,13 +347,3 @@ func flattenArmNatGatewaySubResource(input *[]network.SubResource) []interface{}
 
 // 	return results
 // }
-
-func flattenArmNatGatewayNatGatewaySku(input *network.NatGatewaySku) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	return []interface{}{result}
-}

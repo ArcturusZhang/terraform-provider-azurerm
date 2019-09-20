@@ -67,6 +67,11 @@ func resourceArmSubnet() *schema.Resource {
 				Set:      schema.HashString,
 			},
 
+			"nat_gateway_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"service_endpoints": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -201,6 +206,9 @@ func resourceArmSubnetCreateUpdate(d *schema.ResourceData, meta interface{}) err
 	delegations := expandSubnetDelegation(d)
 	properties.Delegations = &delegations
 
+	natGateway := expandSubnetNatGateway(d)
+	properties.NatGateway = &natGateway
+
 	subnet := network.Subnet{
 		Name:                   &name,
 		SubnetPropertiesFormat: &properties,
@@ -282,6 +290,11 @@ func resourceArmSubnetRead(d *schema.ResourceData, meta interface{}) error {
 		delegation := flattenSubnetDelegation(props.Delegations)
 		if err := d.Set("delegation", delegation); err != nil {
 			return fmt.Errorf("Error flattening `delegation`: %+v", err)
+		}
+
+		natGatewayId := flattenSubnetNatGateway(props.NatGateway)
+		if err := d.Set("nat_gateway_id", natGatewayId); err != nil {
+			return err
 		}
 	}
 
@@ -414,6 +427,18 @@ func expandSubnetDelegation(d *schema.ResourceData) []network.Delegation {
 	}
 
 	return retDelegations
+}
+
+func expandSubnetNatGateway(d *schema.ResourceData) network.SubResource {
+	id := d.Get("nat_gateway_id").(string)
+	subResource := network.SubResource{
+		ID: utils.String(id),
+	}
+	return subResource
+}
+
+func flattenSubnetNatGateway(natGateway *network.SubResource) interface{} {
+	return *natGateway.ID
 }
 
 func flattenSubnetDelegation(delegations *[]network.Delegation) []interface{} {
