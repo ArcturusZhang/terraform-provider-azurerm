@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-06-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-07-01/network"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -151,7 +151,7 @@ func resourceArmNatGatewayCreateUpdate(d *schema.ResourceData, meta interface{})
 		}
 	}
 
-	id := d.Get("id").(string)
+	// id := d.Get("id").(string)
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	idleTimeoutInMinutes := d.Get("idle_timeout_in_minutes").(int)
 	publicIpAddressIds := d.Get("public_ip_address_ids").([]interface{})
@@ -162,7 +162,7 @@ func resourceArmNatGatewayCreateUpdate(d *schema.ResourceData, meta interface{})
 	t := d.Get("tags").(map[string]interface{})
 
 	parameters := network.NatGateway{
-		ID:       utils.String(id),
+		// ID:       utils.String(id),
 		Location: utils.String(location),
 		NatGatewayPropertiesFormat: &network.NatGatewayPropertiesFormat{
 			IdleTimeoutInMinutes: utils.Int32(int32(idleTimeoutInMinutes)),
