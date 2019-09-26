@@ -2,7 +2,6 @@ package network
 
 import (
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-06-01/network"
-	newNetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-07-01/network"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 )
 
@@ -27,7 +26,7 @@ type Client struct {
 	SecurityGroupClient                  *network.SecurityGroupsClient
 	SecurityRuleClient                   *network.SecurityRulesClient
 	SubnetsClient                        *network.SubnetsClient
-	NatGatewaysClient                    *newNetwork.NatGatewaysClient
+	NatGatewaysClient                    *network.NatGatewaysClient
 	VnetGatewayConnectionsClient         *network.VirtualNetworkGatewayConnectionsClient
 	VnetGatewayClient                    *network.VirtualNetworkGatewaysClient
 	VnetClient                           *network.VirtualNetworksClient
@@ -107,7 +106,7 @@ func BuildClient(o *common.ClientOptions) *Client {
 	VnetGatewayClient := network.NewVirtualNetworkGatewaysClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&VnetGatewayClient.Client, o.ResourceManagerAuthorizer)
 
-	NatGatewaysClient := newNetwork.NewNatGatewaysClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	NatGatewaysClient := network.NewNatGatewaysClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&NatGatewaysClient.Client, o.ResourceManagerAuthorizer)
 
 	VnetGatewayConnectionsClient := network.NewVirtualNetworkGatewayConnectionsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
