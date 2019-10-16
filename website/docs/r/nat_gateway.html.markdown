@@ -40,5 +40,3 @@ The following arguments are supported:
 The following attributes are exported:
 
 * `subnet_ids` - A list of IDs of existing `azurerm_subnet` resources.
-
-* `type` - Resource type.

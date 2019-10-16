@@ -106,20 +106,19 @@ func dataSourceArmNatGatewayRead(d *schema.ResourceData, meta interface{}) error
 	if location := resp.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	if natGatewayPropertiesFormat := resp.NatGatewayPropertiesFormat; natGatewayPropertiesFormat != nil {
-		d.Set("idle_timeout_in_minutes", natGatewayPropertiesFormat.IdleTimeoutInMinutes)
-		if err := d.Set("public_ip_address_ids", flattenArmNatGatewaySubResourceID(natGatewayPropertiesFormat.PublicIPAddresses)); err != nil {
+	if props := resp.NatGatewayPropertiesFormat; props != nil {
+		d.Set("idle_timeout_in_minutes", props.IdleTimeoutInMinutes)
+		if err := d.Set("public_ip_address_ids", flattenArmNatGatewaySubResourceID(props.PublicIPAddresses)); err != nil {
 			return fmt.Errorf("Error setting `public_ip_address_ids`: %+v", err)
 		}
-		if err := d.Set("public_ip_prefix_ids", flattenArmNatGatewaySubResourceID(natGatewayPropertiesFormat.PublicIPPrefixes)); err != nil {
+		if err := d.Set("public_ip_prefix_ids", flattenArmNatGatewaySubResourceID(props.PublicIPPrefixes)); err != nil {
 			return fmt.Errorf("Error setting `public_ip_prefix_ids`: %+v", err)
 		}
-		d.Set("resource_guid", natGatewayPropertiesFormat.ResourceGUID)
-		if err := d.Set("subnet_ids", flattenArmNatGatewaySubResourceID(natGatewayPropertiesFormat.Subnets)); err != nil {
+		d.Set("resource_guid", props.ResourceGUID)
+		if err := d.Set("subnet_ids", flattenArmNatGatewaySubResourceID(props.Subnets)); err != nil {
 			return fmt.Errorf("Error setting `subnet_ids`: %+v", err)
 		}
 	}
-	d.Set("type", resp.Type)
 	if err := d.Set("zones", utils.FlattenStringSlice(resp.Zones)); err != nil {
 		return fmt.Errorf("Error setting `zones`: %+v", err)
 	}
