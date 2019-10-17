@@ -84,7 +84,7 @@ func dataSourceArmNatGateway() *schema.Resource {
 }
 
 func dataSourceArmNatGatewayRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Network.NatGatewaysClient
+	client := meta.(*ArmClient).Network.NatGatewayClient
 	ctx := meta.(*ArmClient).StopContext
 
 	name := d.Get("name").(string)

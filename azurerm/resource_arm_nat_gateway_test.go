@@ -111,14 +111,14 @@ func testCheckAzureRMNatGatewayExists(resourceName string) resource.TestCheckFun
 		name := rs.Primary.Attributes["name"]
 		resourceGroup := rs.Primary.Attributes["resource_group_name"]
 
-		client := testAccProvider.Meta().(*ArmClient).Network.NatGatewaysClient
+		client := testAccProvider.Meta().(*ArmClient).Network.NatGatewayClient
 		ctx := testAccProvider.Meta().(*ArmClient).StopContext
 
 		if resp, err := client.Get(ctx, resourceGroup, name, ""); err != nil {
 			if utils.ResponseWasNotFound(resp.Response) {
 				return fmt.Errorf("Bad: Nat Gateway %q (Resource Group %q) does not exist", name, resourceGroup)
 			}
-			return fmt.Errorf("Bad: Get on network.NatGatewaysClient: %+v", err)
+			return fmt.Errorf("Bad: Get on network.NatGatewayClient: %+v", err)
 		}
 
 		return nil
@@ -126,7 +126,7 @@ func testCheckAzureRMNatGatewayExists(resourceName string) resource.TestCheckFun
 }
 
 func testCheckAzureRMNatGatewayDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*ArmClient).Network.NatGatewaysClient
+	client := testAccProvider.Meta().(*ArmClient).Network.NatGatewayClient
 	ctx := testAccProvider.Meta().(*ArmClient).StopContext
 
 	for _, rs := range s.RootModule().Resources {
@@ -139,7 +139,7 @@ func testCheckAzureRMNatGatewayDestroy(s *terraform.State) error {
 
 		if resp, err := client.Get(ctx, resourceGroup, name, ""); err != nil {
 			if !utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("Bad: Get on network.NatGatewaysClient: %+v", err)
+				return fmt.Errorf("Bad: Get on network.NatGatewayClient: %+v", err)
 			}
 		}
 

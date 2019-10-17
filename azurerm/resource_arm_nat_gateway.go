@@ -101,7 +101,7 @@ func resourceArmNatGateway() *schema.Resource {
 }
 
 func resourceArmNatGatewayCreateUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Network.NatGatewaysClient
+	client := meta.(*ArmClient).Network.NatGatewayClient
 	ctx := meta.(*ArmClient).StopContext
 
 	name := d.Get("name").(string)
@@ -162,7 +162,7 @@ func resourceArmNatGatewayCreateUpdate(d *schema.ResourceData, meta interface{})
 }
 
 func resourceArmNatGatewayRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Network.NatGatewaysClient
+	client := meta.(*ArmClient).Network.NatGatewayClient
 	ctx := meta.(*ArmClient).StopContext
 
 	id, err := azure.ParseAzureResourceID(d.Id())
@@ -208,7 +208,7 @@ func resourceArmNatGatewayRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceArmNatGatewayDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Network.NatGatewaysClient
+	client := meta.(*ArmClient).Network.NatGatewayClient
 	ctx := meta.(*ArmClient).StopContext
 
 	id, err := azure.ParseAzureResourceID(d.Id())
