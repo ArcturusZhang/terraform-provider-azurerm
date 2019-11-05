@@ -9,6 +9,7 @@ import (
 type ComputeClient struct {
 	AvailabilitySetsClient         *compute.AvailabilitySetsClient
 	DisksClient                    *compute.DisksClient
+	DiskEncryptionSetsClient       *compute.DiskEncryptionSetsClient
 	GalleriesClient                *compute.GalleriesClient
 	GalleryImagesClient            *compute.GalleryImagesClient
 	GalleryImageVersionsClient     *compute.GalleryImageVersionsClient
@@ -31,6 +32,9 @@ func NewComputeClient(o *common.ClientOptions) *ComputeClient {
 
 	disksClient := compute.NewDisksClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&disksClient.Client, o.ResourceManagerAuthorizer)
+
+	diskEncryptionSetsClient := compute.NewDiskEncryptionSetsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&diskEncryptionSetsClient.Client, o.ResourceManagerAuthorizer)
 
 	galleriesClient := compute.NewGalleriesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&galleriesClient.Client, o.ResourceManagerAuthorizer)
@@ -77,6 +81,7 @@ func NewComputeClient(o *common.ClientOptions) *ComputeClient {
 	return &ComputeClient{
 		AvailabilitySetsClient:         &availabilitySetsClient,
 		DisksClient:                    &disksClient,
+		DiskEncryptionSetsClient:       &diskEncryptionSetsClient,
 		GalleriesClient:                &galleriesClient,
 		GalleryImagesClient:            &galleryImagesClient,
 		GalleryImageVersionsClient:     &galleryImageVersionsClient,
