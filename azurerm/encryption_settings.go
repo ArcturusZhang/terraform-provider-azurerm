@@ -65,8 +65,10 @@ func encryptionSettingsSchema() *schema.Schema {
 
 func expandManagedDiskEncryptionSettings(settings map[string]interface{}) *compute.EncryptionSettingsCollection {
 	enabled := settings["enabled"].(bool)
+	encryptionSettingsVersion := settings["encryption_settings_version"].(string)
 	config := &compute.EncryptionSettingsCollection{
-		Enabled: utils.Bool(enabled),
+		Enabled:                   utils.Bool(enabled),
+		EncryptionSettingsVersion: utils.String(encryptionSettingsVersion),
 	}
 
 	var diskEncryptionKey *compute.KeyVaultAndSecretReference
@@ -114,7 +116,8 @@ func flattenManagedDiskEncryptionSettings(encryptionSettings *compute.Encryption
 	}
 
 	value := map[string]interface{}{
-		"enabled": *encryptionSettings.Enabled,
+		"enabled":                     *encryptionSettings.Enabled,
+		"encryption_settings_version": *encryptionSettings.EncryptionSettingsVersion,
 	}
 
 	if encryptionSettings.EncryptionSettings != nil && len(*encryptionSettings.EncryptionSettings) > 0 {

@@ -94,6 +94,18 @@ func resourceArmManagedDisk() *schema.Resource {
 				ForceNew: true,
 			},
 
+			"storage_account_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+
+			"upload_size_bytes": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: true,
+			},
+
 			"os_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -123,6 +135,63 @@ func resourceArmManagedDisk() *schema.Resource {
 			},
 
 			"encryption_settings": encryptionSettingsSchema(),
+
+			"encryption": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:     schema.TypeString,
+							Required: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								string(compute.EncryptionAtRestWithPlatformKey),
+								string(compute.EncryptionAtRestWithCustomerKey),
+							}, false),
+						},
+						"disk_encryption_set_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+
+			"hyperv_generation": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					string(compute.V1),
+					string(compute.V2),
+				}, false),
+				Default: string(compute.V1),
+			},
+
+			"disk_size_bytes": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
+			"disk_state": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"managed_by": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"time_created": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+
+			"unique_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 
 			"tags": tags.Schema(),
 		},
@@ -168,17 +237,6 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 	expandedTags := tags.Expand(t)
 	zones := azure.ExpandZones(d.Get("zones").([]interface{}))
 
-	var skuName compute.DiskStorageAccountTypes
-	if strings.EqualFold(storageAccountType, string(compute.PremiumLRS)) {
-		skuName = compute.PremiumLRS
-	} else if strings.EqualFold(storageAccountType, string(compute.StandardLRS)) {
-		skuName = compute.StandardLRS
-	} else if strings.EqualFold(storageAccountType, string(compute.StandardSSDLRS)) {
-		skuName = compute.StandardSSDLRS
-	} else if strings.EqualFold(storageAccountType, string(compute.UltraSSDLRS)) {
-		skuName = compute.UltraSSDLRS
-	}
-
 	createDisk := compute.Disk{
 		Name:     &name,
 		Location: &location,
@@ -186,7 +244,7 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 			OsType: compute.OperatingSystemTypes(osType),
 		},
 		Sku: &compute.DiskSku{
-			Name: skuName,
+			Name: compute.DiskStorageAccountTypes(storageAccountType),
 		},
 		Tags:  expandedTags,
 		Zones: zones,
@@ -195,6 +253,9 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 	if v := d.Get("disk_size_gb"); v != 0 {
 		diskSize := int32(v.(int))
 		createDisk.DiskProperties.DiskSizeGB = &diskSize
+	}
+	if v, ok := d.GetOk("hyperv_generation"); ok {
+		createDisk.DiskProperties.HyperVGeneration = compute.HyperVGeneration(v.(string))
 	}
 
 	if strings.EqualFold(storageAccountType, string(compute.UltraSSDLRS)) {
@@ -240,12 +301,28 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 		} else {
 			return fmt.Errorf("[ERROR] image_reference_id must be specified when create_option is `%s`", compute.FromImage)
 		}
+	} else if strings.EqualFold(createOption, string(compute.Import)) {
+		if storageAccountId := d.Get("storage_account_id").(string); storageAccountId != "" {
+			createDisk.CreationData.StorageAccountID = &storageAccountId
+		} else {
+			return fmt.Errorf("[ERROR] storage_account_id must be specified when create_option is `%s`", compute.Import)
+		}
+	} else if strings.EqualFold(createOption, string(compute.Upload)) {
+		if uploadSizeBytes, ok := d.GetOk("upload_size_bytes"); ok {
+			createDisk.CreationData.UploadSizeBytes = utils.Int64(uploadSizeBytes.(int64))
+		} else {
+			return fmt.Errorf("[ERROR] upload_size_bytes must be specified when create_option is `%s`", compute.Import)
+		}
 	}
 
 	if v, ok := d.GetOk("encryption_settings"); ok {
 		encryptionSettings := v.([]interface{})
 		settings := encryptionSettings[0].(map[string]interface{})
 		createDisk.EncryptionSettingsCollection = expandManagedDiskEncryptionSettings(settings)
+	}
+
+	if v, ok := d.GetOk("encryption"); ok {
+		createDisk.Encryption = expandArmDiskEncryption(v.([]interface{}))
 	}
 
 	future, err := client.CreateOrUpdate(ctx, resGroup, name, createDisk)
@@ -285,6 +362,7 @@ func resourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) error 
 	resp, err := client.Get(ctx, resGroup, name)
 	if err != nil {
 		if utils.ResponseWasNotFound(resp.Response) {
+			log.Printf("[INFO] Disk %q does not exist - removing from state", d.Id())
 			d.SetId("")
 			return nil
 		}
@@ -293,7 +371,7 @@ func resourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) error 
 
 	d.Set("name", resp.Name)
 	d.Set("resource_group_name", resGroup)
-	d.Set("zones", resp.Zones)
+	d.Set("zones", utils.FlattenStringSlice(resp.Zones))
 
 	if location := resp.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
@@ -304,19 +382,24 @@ func resourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	if props := resp.DiskProperties; props != nil {
+		if creationData := props.CreationData; creationData != nil {
+			flattenAzureRmManagedDiskCreationData(d, creationData)
+		}
 		d.Set("disk_size_gb", props.DiskSizeGB)
 		d.Set("os_type", props.OsType)
 		d.Set("disk_iops_read_write", props.DiskIOPSReadWrite)
 		d.Set("disk_mbps_read_write", props.DiskMBpsReadWrite)
-	}
-
-	if resp.CreationData != nil {
-		flattenAzureRmManagedDiskCreationData(d, resp.CreationData)
-	}
-
-	flattened := flattenManagedDiskEncryptionSettings(resp.EncryptionSettingsCollection)
-	if err := d.Set("encryption_settings", flattened); err != nil {
-		return fmt.Errorf("Error setting encryption settings: %+v", err)
+		d.Set("disk_size_bytes", int(*props.DiskSizeBytes))
+		d.Set("disk_state", string(props.DiskState))
+		if err := d.Set("encryption", flattenArmDiskEncryption(props.Encryption)); err != nil {
+			return fmt.Errorf("Error setting `encryption`: %+v", err)
+		}
+		if err := d.Set("encryption_settings", flattenManagedDiskEncryptionSettings(props.EncryptionSettingsCollection)); err != nil {
+			return fmt.Errorf("Error setting `encryption_settings`: %+v", err)
+		}
+		d.Set("hyperv_generation", string(props.HyperVGeneration))
+		d.Set("time_created", (props.TimeCreated).String())
+		d.Set("unique_id", props.UniqueID)
 	}
 
 	return tags.FlattenAndSet(d, resp.Tags)
@@ -357,4 +440,35 @@ func flattenAzureRmManagedDiskCreationData(d *schema.ResourceData, creationData 
 	if ref := creationData.ImageReference; ref != nil {
 		d.Set("image_reference_id", ref.ID)
 	}
+}
+
+func expandArmDiskEncryption(input []interface{}) *compute.Encryption {
+	if len(input) == 0 {
+		return nil
+	}
+	v := input[0].(map[string]interface{})
+
+	diskEncryptionSetId := v["disk_encryption_set_id"].(string)
+	t := v["type"].(string)
+
+	result := compute.Encryption{
+		DiskEncryptionSetID: utils.String(diskEncryptionSetId),
+		Type:                compute.EncryptionType(t),
+	}
+	return &result
+}
+
+func flattenArmDiskEncryption(input *compute.Encryption) []interface{} {
+	if input == nil {
+		return make([]interface{}, 0)
+	}
+
+	result := make(map[string]interface{})
+
+	if diskEncryptionSetId := input.DiskEncryptionSetID; diskEncryptionSetId != nil {
+		result["disk_encryption_set_id"] = *diskEncryptionSetId
+	}
+	result["type"] = string(input.Type)
+
+	return []interface{}{result}
 }

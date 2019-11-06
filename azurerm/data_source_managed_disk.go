@@ -93,22 +93,37 @@ func dataSourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) erro
 
 	d.SetId(*resp.ID)
 
+	d.Set("name", name)
+	d.Set("resource_group_name", resGroup)
+
+	if location := resp.Location; location != nil {
+		d.Set("location", azure.NormalizeLocation(*location))
+	}
+
 	if sku := resp.Sku; sku != nil {
 		d.Set("storage_account_type", string(sku.Name))
 	}
 
 	if props := resp.DiskProperties; props != nil {
+		if creationData := props.CreationData; creationData != nil {
+			flattenAzureRmManagedDiskCreationData(d, creationData)
+		}
 		d.Set("disk_size_gb", props.DiskSizeGB)
 		d.Set("disk_iops_read_write", props.DiskIOPSReadWrite)
 		d.Set("disk_mbps_read_write", props.DiskMBpsReadWrite)
 		d.Set("os_type", props.OsType)
+		d.Set("disk_size_bytes", int(*props.DiskSizeBytes))
+		d.Set("disk_state", string(props.DiskState))
+		if err := d.Set("encryption_settings", flattenManagedDiskEncryptionSettings(props.EncryptionSettingsCollection)); err != nil {
+			return fmt.Errorf("Error setting `encryption_settings`: %+v", err)
+		}
+		d.Set("hyperv_generation", string(props.HyperVGeneration))
+		d.Set("time_created", (props.TimeCreated).String())
+		d.Set("unique_id", props.UniqueID)
 	}
+	d.Set("managed_by", resp.ManagedBy)
 
-	if resp.CreationData != nil {
-		flattenAzureRmManagedDiskCreationData(d, resp.CreationData)
-	}
-
-	d.Set("zones", resp.Zones)
+	d.Set("zones", utils.FlattenStringSlice(resp.Zones))
 
 	return tags.FlattenAndSet(d, resp.Tags)
 }
