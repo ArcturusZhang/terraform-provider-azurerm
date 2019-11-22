@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"reflect"
 
-	"github.com/Azure/azure-sdk-for-go/services/machinelearningservices/mgmt/2019-06-01/machinelearningservices"
+	"github.com/Azure/azure-sdk-for-go/services/machinelearningservices/mgmt/2019-11-01/machinelearningservices"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/suppress"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
@@ -143,6 +144,7 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 			ApplicationInsights: &applicationInsights,
 			KeyVault:            &keyVault,
 		},
+		Identity: &machinelearningservices.Identity{Type: machinelearningservices.SystemAssigned},
 	}
 
 	result, err := client.CreateOrUpdate(ctx, resGroup, name, workspace)
