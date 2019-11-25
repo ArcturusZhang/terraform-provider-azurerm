@@ -136,26 +136,20 @@ func resourceArmManagedDisk() *schema.Resource {
 
 			"encryption_settings": encryptionSettingsSchema(),
 
-			"encryption": {
-				Type:     schema.TypeList,
+			"encryption_type": {
+				Type:     schema.TypeString,
 				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"type": {
-							Type:     schema.TypeString,
-							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.EncryptionAtRestWithPlatformKey),
-								string(compute.EncryptionAtRestWithCustomerKey),
-							}, false),
-						},
-						"disk_encryption_set_id": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-					},
-				},
+				ValidateFunc: validation.StringInSlice([]string{
+					string(compute.EncryptionAtRestWithPlatformKey),
+					string(compute.EncryptionAtRestWithCustomerKey),
+				}, false),
+				Default: string(compute.EncryptionAtRestWithPlatformKey),
+			},
+
+			"managed_disk_encryption_set_id": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: azure.ValidateResourceID,
 			},
 
 			"hyperv_generation": {
@@ -321,9 +315,17 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 		createDisk.EncryptionSettingsCollection = expandManagedDiskEncryptionSettings(settings)
 	}
 
-	if v, ok := d.GetOk("encryption"); ok {
-		createDisk.Encryption = expandArmDiskEncryption(v.([]interface{}))
+	encryption := compute.Encryption{}
+
+	if v, ok := d.GetOk("encryption_type"); ok {
+		encryption.Type = compute.EncryptionType(v.(string))
 	}
+
+	if v, ok := d.GetOk("managed_disk_encryption_set_id"); ok {
+		encryption.DiskEncryptionSetID = utils.String(v.(string))
+	}
+
+	createDisk.Encryption = &encryption
 
 	future, err := client.CreateOrUpdate(ctx, resGroup, name, createDisk)
 	if err != nil {
@@ -391,9 +393,12 @@ func resourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("disk_mbps_read_write", props.DiskMBpsReadWrite)
 		d.Set("disk_size_bytes", int(*props.DiskSizeBytes))
 		d.Set("disk_state", string(props.DiskState))
-		if err := d.Set("encryption", flattenArmDiskEncryption(props.Encryption)); err != nil {
-			return fmt.Errorf("Error setting `encryption`: %+v", err)
+
+		if encryption := props.Encryption; encryption != nil {
+			d.Set("encryption_type", string(encryption.Type))
+			d.Set("managed_disk_encryption_set_id", encryption.DiskEncryptionSetID)
 		}
+
 		if err := d.Set("encryption_settings", flattenManagedDiskEncryptionSettings(props.EncryptionSettingsCollection)); err != nil {
 			return fmt.Errorf("Error setting `encryption_settings`: %+v", err)
 		}
@@ -440,35 +445,4 @@ func flattenAzureRmManagedDiskCreationData(d *schema.ResourceData, creationData 
 	if ref := creationData.ImageReference; ref != nil {
 		d.Set("image_reference_id", ref.ID)
 	}
-}
-
-func expandArmDiskEncryption(input []interface{}) *compute.Encryption {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
-
-	diskEncryptionSetId := v["disk_encryption_set_id"].(string)
-	t := v["type"].(string)
-
-	result := compute.Encryption{
-		DiskEncryptionSetID: utils.String(diskEncryptionSetId),
-		Type:                compute.EncryptionType(t),
-	}
-	return &result
-}
-
-func flattenArmDiskEncryption(input *compute.Encryption) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	if diskEncryptionSetId := input.DiskEncryptionSetID; diskEncryptionSetId != nil {
-		result["disk_encryption_set_id"] = *diskEncryptionSetId
-	}
-	result["type"] = string(input.Type)
-
-	return []interface{}{result}
 }
