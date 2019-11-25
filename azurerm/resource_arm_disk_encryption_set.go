@@ -51,8 +51,9 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 							ValidateFunc: validate.NoEmptyStrings,
 						},
 						"source_vault_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: azure.ValidateResourceID,
 						},
 					},
 				},
