@@ -81,7 +81,7 @@ func Provider() terraform.ResourceProvider {
 		"azurerm_data_lake_store":                           dataSourceArmDataLakeStoreAccount(),
 		"azurerm_dev_test_lab":                              dataSourceArmDevTestLab(),
 		"azurerm_dev_test_virtual_network":                  dataSourceArmDevTestVirtualNetwork(),
-		"azurerm_disk_encryption_set":                     dataSourceArmDiskEncryptionSet(),
+		"azurerm_disk_encryption_set":                       dataSourceArmDiskEncryptionSet(),
 		"azurerm_dns_zone":                                  dataSourceArmDnsZone(),
 		"azurerm_eventhub_namespace":                        dataSourceEventHubNamespace(),
 		"azurerm_express_route_circuit":                     dataSourceArmExpressRouteCircuit(),
