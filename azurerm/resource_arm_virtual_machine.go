@@ -781,7 +781,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{
 											string(compute.OobeSystem),
 										}, false),
-										Default: string(compute.OobeSystem),
 									},
 									"component": {
 										Type:     schema.TypeString,
@@ -789,7 +788,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{
 											string(compute.MicrosoftWindowsShellSetup),
 										}, false),
-										Default: string(compute.MicrosoftWindowsShellSetup),
 									},
 									"setting_name": {
 										Type:     schema.TypeString,
@@ -798,7 +796,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 											string(compute.AutoLogon),
 											string(compute.FirstLogonCommands),
 										}, false),
-										Default: string(compute.AutoLogon),
 									},
 									"content": {
 										Type:      schema.TypeString,
