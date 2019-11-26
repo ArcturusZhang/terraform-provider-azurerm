@@ -59,13 +59,30 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 				},
 			},
 
-			"identity_type": {
-				Type:     schema.TypeString,
+			"identity": {
+				Type:     schema.TypeList,
 				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(compute.SystemAssigned),
-				}, false),
-				Default: string(compute.SystemAssigned),
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								string(compute.SystemAssigned),
+							}, false),
+							Default: string(compute.SystemAssigned),
+						},
+						"principal_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"tenant_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
 			},
 
 			"previous_keys": {
@@ -113,18 +130,18 @@ func resourceArmDiskEncryptionSetCreateUpdate(d *schema.ResourceData, meta inter
 
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	activeKey := d.Get("active_key").([]interface{})
-	identityType := d.Get("identity_type").(string)
 	t := d.Get("tags").(map[string]interface{})
 
 	diskEncryptionSet := compute.DiskEncryptionSet{
-		Identity: &compute.EncryptionSetIdentity{
-			Type: compute.DiskEncryptionSetIdentityType(identityType),
-		},
 		Location: utils.String(location),
 		EncryptionSetProperties: &compute.EncryptionSetProperties{
 			ActiveKey: expandArmDiskEncryptionSetKeyVaultAndKeyReference(activeKey),
 		},
 		Tags: tags.Expand(t),
+	}
+
+	if v, ok := d.GetOk("identity"); ok {
+		diskEncryptionSet.Identity = expandArmDiskEncryptionSetIdentity(v.([]interface{}))
 	}
 
 	future, err := client.CreateOrUpdate(ctx, resourceGroup, name, diskEncryptionSet)
@@ -182,7 +199,9 @@ func resourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}) 
 		}
 	}
 	if identity := resp.Identity; identity != nil {
-		d.Set("identity_type", string(identity.Type))
+		if err := d.Set("identity", flattenArmDiskEncryptionSetIdentity(identity)); err != nil {
+			return fmt.Errorf("Error setting `identity`: %+v", err)
+		}
 	}
 
 	return tags.FlattenAndSet(d, resp.Tags)
@@ -234,6 +253,20 @@ func expandArmDiskEncryptionSetKeyVaultAndKeyReference(input []interface{}) *com
 	return &result
 }
 
+func expandArmDiskEncryptionSetIdentity(input []interface{}) *compute.EncryptionSetIdentity {
+	if len(input) == 0 {
+		return nil
+	}
+	v := input[0].(map[string]interface{})
+
+	t := v["type"].(string)
+	result := compute.EncryptionSetIdentity{
+		Type: compute.DiskEncryptionSetIdentityType(t),
+	}
+
+	return &result
+}
+
 func flattenArmDiskEncryptionSetKeyVaultAndKeyReference(input *compute.KeyVaultAndKeyReference) []interface{} {
 	if input == nil {
 		return make([]interface{}, 0)
@@ -272,4 +305,21 @@ func flattenArmDiskEncryptionSetKeyVaultAndKeyReferenceArray(input *[]compute.Ke
 	}
 
 	return results
+}
+
+func flattenArmDiskEncryptionSetIdentity(input *compute.EncryptionSetIdentity) []interface{} {
+	if input == nil {
+		return make([]interface{}, 0)
+	}
+
+	result := make(map[string]interface{})
+
+	result["type"] = string(input.Type)
+	if principalId := input.PrincipalID; principalId != nil {
+		result["principal_id"] = *principalId
+	}
+	if tenantId := input.TenantID; tenantId != nil {
+		result["tenant_id"] = *tenantId
+	}
+	return []interface{}{result}
 }

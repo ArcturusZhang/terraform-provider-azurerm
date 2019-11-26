@@ -42,9 +42,26 @@ func dataSourceArmDiskEncryptionSet() *schema.Resource {
 				},
 			},
 
-			"identity_type": {
-				Type:     schema.TypeString,
-				Computed: true,
+			"identity": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"principal_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"tenant_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
 			},
 
 			"previous_keys": {
@@ -100,7 +117,9 @@ func dataSourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}
 		}
 	}
 	if identity := resp.Identity; identity != nil {
-		d.Set("identity_type", string(identity.Type))
+		if err := d.Set("identity", flattenArmDiskEncryptionSetIdentity(identity)); err != nil {
+			return fmt.Errorf("Error setting `identity`: %+v", err)
+		}
 	}
 
 	return nil
