@@ -131,6 +131,11 @@ func dataSourceArmKeyVault() *schema.Resource {
 				Computed: true,
 			},
 
+			"enable_purge_protection": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+
 			"network_acls": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -196,6 +201,7 @@ func dataSourceArmKeyVaultRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("enabled_for_template_deployment", props.EnabledForTemplateDeployment)
 		d.Set("vault_uri", props.VaultURI)
 		d.Set("enable_soft_delete", props.EnableSoftDelete)
+		d.Set("enable_purge_protection", props.EnablePurgeProtection)
 
 		if sku := props.Sku; sku != nil {
 			// Remove in 2.0

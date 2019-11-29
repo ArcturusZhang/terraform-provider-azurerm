@@ -160,6 +160,12 @@ func resourceArmKeyVault() *schema.Resource {
 				Default:  false,
 			},
 
+			"enable_purge_protection": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
 			"network_acls": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -255,7 +261,8 @@ func resourceArmKeyVaultCreateUpdate(d *schema.ResourceData, meta interface{}) e
 	enabledForDeployment := d.Get("enabled_for_deployment").(bool)
 	enabledForDiskEncryption := d.Get("enabled_for_disk_encryption").(bool)
 	enabledForTemplateDeployment := d.Get("enabled_for_template_deployment").(bool)
-	enabledSoftDelete := d.Get("enable_soft_delete").(bool)
+	enableSoftDelete := d.Get("enable_soft_delete").(bool)
+	enablePurgeProtection := d.Get("enable_purge_protection").(bool)
 	t := d.Get("tags").(map[string]interface{})
 
 	networkAclsRaw := d.Get("network_acls").([]interface{})
@@ -276,7 +283,8 @@ func resourceArmKeyVaultCreateUpdate(d *schema.ResourceData, meta interface{}) e
 			EnabledForDeployment:         &enabledForDeployment,
 			EnabledForDiskEncryption:     &enabledForDiskEncryption,
 			EnabledForTemplateDeployment: &enabledForTemplateDeployment,
-			EnableSoftDelete:             &enabledSoftDelete,
+			EnableSoftDelete:             &enableSoftDelete,
+			EnablePurgeProtection:        &enablePurgeProtection,
 			NetworkAcls:                  networkAcls,
 		},
 		Tags: tags.Expand(t),
@@ -382,6 +390,7 @@ func resourceArmKeyVaultRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("enabled_for_template_deployment", props.EnabledForTemplateDeployment)
 		d.Set("vault_uri", props.VaultURI)
 		d.Set("enable_soft_delete", props.EnableSoftDelete)
+		d.Set("enable_purge_protection", props.EnablePurgeProtection)
 
 		if sku := props.Sku; sku != nil {
 			// Remove in 2.0
