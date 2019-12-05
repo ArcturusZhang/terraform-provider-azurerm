@@ -488,56 +488,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Default: string(compute.Local),
 						},
 
-						"encryption_settings": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MaxItems: 1,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"enabled": {
-										Type:     schema.TypeBool,
-										Optional: true,
-									},
-									"disk_encryption_key": {
-										Type:     schema.TypeList,
-										Optional: true,
-										MaxItems: 1,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"secret_url": {
-													Type:         schema.TypeString,
-													Required:     true,
-													ValidateFunc: validate.NoEmptyStrings,
-												},
-												"source_vault_id": {
-													Type:     schema.TypeString,
-													Optional: true,
-												},
-											},
-										},
-									},
-									"key_encryption_key": {
-										Type:     schema.TypeList,
-										Optional: true,
-										MaxItems: 1,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"key_url": {
-													Type:         schema.TypeString,
-													Required:     true,
-													ValidateFunc: validate.NoEmptyStrings,
-												},
-												"source_vault_id": {
-													Type:     schema.TypeString,
-													Optional: true,
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-
 						"managed_disk_encryption_set_id": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -891,37 +841,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 				Optional: true,
 			},
 
-			"billing_profile_max_price": {
-				Type:     schema.TypeFloat,
-				Optional: true,
-			},
-
-			"eviction_policy": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(compute.Deallocate),
-					string(compute.Delete),
-				}, false),
-				Default: string(compute.Deallocate),
-			},
-
-			"host_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				DiffSuppressFunc: suppress.CaseDifference,
-			},
-
-			"priority": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(compute.Regular),
-					string(compute.Low),
-				}, false),
-				Default: string(compute.Regular),
-			},
-
 			"virtual_machine_scale_set_id": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -1033,26 +952,6 @@ func resourceArmVirtualMachineCreateUpdate(d *schema.ResourceData, meta interfac
 		}
 	}
 
-	if v, ok := d.GetOk("billing_profile_max_price"); ok {
-		properties.BillingProfile = &compute.BillingProfile{
-			MaxPrice: utils.Float(v.(float64)),
-		}
-	}
-
-	if v, ok := d.GetOk("eviction_policy"); ok {
-		properties.EvictionPolicy = compute.VirtualMachineEvictionPolicyTypes(v.(string))
-	}
-
-	if v, ok := d.GetOk("host_id"); ok {
-		properties.Host = &compute.SubResource{
-			ID: utils.String(v.(string)),
-		}
-	}
-
-	if v, ok := d.GetOk("priority"); ok {
-		properties.Priority = compute.VirtualMachinePriorityTypes(v.(string))
-	}
-
 	if v, ok := d.GetOk("virtual_machine_scale_set_id"); ok {
 		properties.VirtualMachineScaleSet = &compute.SubResource{
 			ID: utils.String(v.(string)),
@@ -1161,17 +1060,6 @@ func resourceArmVirtualMachineRead(d *schema.ResourceData, meta interface{}) err
 	}
 
 	if props := resp.VirtualMachineProperties; props != nil {
-		d.Set("eviction_policy", string(props.EvictionPolicy))
-		d.Set("priority", string(props.Priority))
-
-		if billingProfile := props.BillingProfile; billingProfile != nil {
-			d.Set("billing_profile_max_price", *billingProfile.MaxPrice)
-		}
-
-		if host := props.Host; host != nil {
-			d.Set("host_id", *host.ID)
-		}
-
 		if vmss := props.VirtualMachineScaleSet; vmss != nil {
 			d.Set("virtual_machine_scale_set_id", *vmss.ID)
 		}
@@ -1765,10 +1653,6 @@ func flattenAzureRmVirtualMachineOsDisk(disk *compute.OSDisk, diskInfo *compute.
 		result["diff_disk_option"] = string(v.Option)
 	}
 
-	if v := disk.EncryptionSettings; v != nil {
-		result["encryption_settings"] = flattenArmVirtualMachineDiskEncryptionSettings(v)
-	}
-
 	if v := disk.ManagedDisk; v != nil {
 		if w := v.DiskEncryptionSet; w != nil {
 			if id := w.ID; id != nil {
@@ -2287,10 +2171,6 @@ func expandAzureRmVirtualMachineOsDisk(d *schema.ResourceData) (*compute.OSDisk,
 		osDisk.WriteAcceleratorEnabled = utils.Bool(v)
 	}
 
-	if encryptionSettings, ok := config["encryption_settings"]; ok {
-		osDisk.EncryptionSettings = expandArmVirtualMachineDiskEncryptionSettings(encryptionSettings.([]interface{}))
-	}
-
 	if managedDiskEncryptionSetId, ok := config["managed_disk_encryption_set_id"]; ok {
 		osDisk.ManagedDisk.DiskEncryptionSet = &compute.DiskEncryptionSetParameters{
 			ID: utils.String(managedDiskEncryptionSetId.(string)),
@@ -2459,128 +2339,4 @@ func determineVirtualMachineIPAddress(ctx context.Context, meta interface{}, pro
 	}
 
 	return "", fmt.Errorf("No Public or Private IP Address found on the Primary Network Interface")
-}
-
-func expandArmVirtualMachineDiskEncryptionSettings(input []interface{}) *compute.DiskEncryptionSettings {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
-
-	diskEncryptionKey := v["disk_encryption_key"].([]interface{})
-	keyEncryptionKey := v["key_encryption_key"].([]interface{})
-	enabled := v["enabled"].(bool)
-
-	result := compute.DiskEncryptionSettings{
-		DiskEncryptionKey: expandArmVirtualMachineKeyVaultSecretReference(diskEncryptionKey),
-		Enabled:           utils.Bool(enabled),
-		KeyEncryptionKey:  expandArmVirtualMachineKeyVaultKeyReference(keyEncryptionKey),
-	}
-	return &result
-}
-
-func expandArmVirtualMachineKeyVaultSecretReference(input []interface{}) *compute.KeyVaultSecretReference {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
-
-	secretUrl := v["secret_url"].(string)
-	sourceVault := v["source_vault"].([]interface{})
-
-	result := compute.KeyVaultSecretReference{
-		SecretURL:   utils.String(secretUrl),
-		SourceVault: expandArmVirtualMachineSubResource(sourceVault),
-	}
-	return &result
-}
-
-func expandArmVirtualMachineSubResource(input []interface{}) *compute.SubResource {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
-
-	availabilitySetId := v["availability_set_id"].(string)
-
-	result := compute.SubResource{
-		ID: utils.String(availabilitySetId),
-	}
-	return &result
-}
-
-func expandArmVirtualMachineKeyVaultKeyReference(input []interface{}) *compute.KeyVaultKeyReference {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
-
-	keyUrl := v["key_url"].(string)
-	sourceVault := v["source_vault"].([]interface{})
-
-	result := compute.KeyVaultKeyReference{
-		KeyURL:      utils.String(keyUrl),
-		SourceVault: expandArmVirtualMachineSubResource(sourceVault),
-	}
-	return &result
-}
-
-func flattenArmVirtualMachineDiskEncryptionSettings(input *compute.DiskEncryptionSettings) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	result["disk_encryption_key"] = flattenArmVirtualMachineKeyVaultSecretReference(input.DiskEncryptionKey)
-	if enabled := input.Enabled; enabled != nil {
-		result["enabled"] = *enabled
-	}
-	result["key_encryption_key"] = flattenArmVirtualMachineKeyVaultKeyReference(input.KeyEncryptionKey)
-
-	return []interface{}{result}
-}
-
-func flattenArmVirtualMachineKeyVaultSecretReference(input *compute.KeyVaultSecretReference) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	if secretUrl := input.SecretURL; secretUrl != nil {
-		result["secret_url"] = *secretUrl
-	}
-	result["source_vault"] = flattenArmVirtualMachineSubResource(input.SourceVault)
-
-	return []interface{}{result}
-}
-
-func flattenArmVirtualMachineKeyVaultKeyReference(input *compute.KeyVaultKeyReference) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	if keyUrl := input.KeyURL; keyUrl != nil {
-		result["key_url"] = *keyUrl
-	}
-	result["source_vault"] = flattenArmVirtualMachineSubResource(input.SourceVault)
-
-	return []interface{}{result}
-}
-
-func flattenArmVirtualMachineSubResource(input *compute.SubResource) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	if availabilitySetId := input.ID; availabilitySetId != nil {
-		result["availability_set_id"] = *availabilitySetId
-	}
-
-	return []interface{}{result}
 }
