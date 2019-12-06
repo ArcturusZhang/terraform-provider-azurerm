@@ -303,11 +303,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
-						"time_zone": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: validate.VirtualMachineTimeZone(),
-						},
 						"winrm": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -733,11 +728,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-
-						"promotion_code": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
 					},
 				},
 			},
@@ -783,11 +773,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 							Set: schema.HashString,
 						},
 
-						"force_update_tag": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
 						"settings": {
 							Type:             schema.TypeString,
 							Optional:         true,
@@ -823,51 +808,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
-			},
-
-			"automatic_repairs_policy": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"enabled": {
-							Type:     schema.TypeBool,
-							Optional: true,
-						},
-						"grace_period": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"max_instance_repairs_percent": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-					},
-				},
-			},
-
-			"do_not_run_extensions_on_overprovisioned_vms": {
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-
-			"scale_in_policy_rules": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.StringInSlice([]string{
-						string(compute.Default),
-						string(compute.OldestVM),
-						string(compute.NewestVM),
-					}, false),
-				},
-			},
-
-			"billing_profile_max_price": {
-				Type:     schema.TypeFloat,
-				Optional: true,
 			},
 
 			"tags": tags.Schema(),
@@ -948,7 +888,6 @@ func resourceArmVirtualMachineScaleSetCreateUpdate(d *schema.ResourceData, meta 
 	singlePlacementGroup := d.Get("single_placement_group").(bool)
 	priority := d.Get("priority").(string)
 	evictionPolicy := d.Get("eviction_policy").(string)
-	doNotRun := d.Get("do_not_run_extensions_on_overprovisioned_vms").(bool)
 
 	scaleSetProps := compute.VirtualMachineScaleSetProperties{
 		UpgradePolicy: &compute.UpgradePolicy{
@@ -965,19 +904,8 @@ func resourceArmVirtualMachineScaleSetCreateUpdate(d *schema.ResourceData, meta 
 			ExtensionProfile: extensions,
 			Priority:         compute.VirtualMachinePriorityTypes(priority),
 		},
-		Overprovision:                          &overprovision,
-		SinglePlacementGroup:                   &singlePlacementGroup,
-		DoNotRunExtensionsOnOverprovisionedVMs: &doNotRun,
-	}
-
-	if v, ok := d.GetOk("billing_profile_max_price"); ok {
-		scaleSetProps.VirtualMachineProfile.BillingProfile = &compute.BillingProfile{
-			MaxPrice: utils.Float(v.(float64)),
-		}
-	}
-
-	if _, ok := d.GetOk("automatic_repairs_policy"); ok {
-		scaleSetProps.AutomaticRepairsPolicy = expandArmVirtualMachineScaleSetAutomaticRepairsPolicy(d)
+		Overprovision:        &overprovision,
+		SinglePlacementGroup: &singlePlacementGroup,
 	}
 
 	if strings.EqualFold(priority, string(compute.Low)) {
@@ -1014,10 +942,6 @@ func resourceArmVirtualMachineScaleSetCreateUpdate(d *schema.ResourceData, meta 
 		properties.AdditionalCapabilities = &compute.AdditionalCapabilities{
 			UltraSSDEnabled: utils.Bool(v.(bool)),
 		}
-	}
-
-	if v, ok := d.GetOk("scale_in_policy_rules"); ok {
-		properties.ScaleInPolicy = expandArmVirtualMachineScaleSetScaleInPolicy(v.([]interface{}))
 	}
 
 	if _, ok := d.GetOk("identity"); ok {
@@ -1102,16 +1026,6 @@ func resourceArmVirtualMachineScaleSetRead(d *schema.ResourceData, meta interfac
 			d.Set("ultra_ssd_enabled", *properties.AdditionalCapabilities.UltraSSDEnabled)
 		}
 
-		if err := d.Set("automatic_repairs_policy", flattenArmVirtualMachineScaleSetAutomaticRepairsPolicy(properties.AutomaticRepairsPolicy)); err != nil {
-			return fmt.Errorf("Error setting `automatic_repairs_policy`: %+v", err)
-		}
-
-		if err := d.Set("scale_in_policy_rules", flattenArmVirtualMachineScaleSetScaleInPolicy(properties.ScaleInPolicy)); err != nil {
-			return fmt.Errorf("Error setting `scale_in_policy_rules`: %+v", err)
-		}
-
-		d.Set("do_not_run_extensions_on_overprovisioned_vms", properties.DoNotRunExtensionsOnOverprovisionedVMs)
-
 		if upgradePolicy := properties.UpgradePolicy; upgradePolicy != nil {
 			d.Set("upgrade_policy_mode", upgradePolicy.Mode)
 			if policy := upgradePolicy.AutomaticOSUpgradePolicy; policy != nil {
@@ -1135,12 +1049,6 @@ func resourceArmVirtualMachineScaleSetRead(d *schema.ResourceData, meta interfac
 			d.Set("license_type", profile.LicenseType)
 			d.Set("priority", string(profile.Priority))
 			d.Set("eviction_policy", string(profile.EvictionPolicy))
-
-			if billingProfile := profile.BillingProfile; billingProfile != nil {
-				if price := billingProfile.MaxPrice; price != nil {
-					d.Set("billing_profile_max_price", *price)
-				}
-			}
 
 			osProfile := flattenAzureRMVirtualMachineScaleSetOsProfile(d, profile.OsProfile)
 			if err := d.Set("os_profile", osProfile); err != nil {
@@ -1358,10 +1266,6 @@ func flattenAzureRmVirtualMachineScaleSetOsProfileWindowsConfig(config *compute.
 		}
 
 		result["additional_unattend_config"] = content
-	}
-
-	if config.TimeZone != nil {
-		result["time_zone"] = *config.TimeZone
 	}
 
 	return []interface{}{result}
@@ -1673,7 +1577,6 @@ func flattenAzureRmVirtualMachineScaleSetExtensionProfile(profile *compute.Virtu
 			e["publisher"] = *properties.Publisher
 			e["type"] = *properties.Type
 			e["type_handler_version"] = *properties.TypeHandlerVersion
-			e["force_update_tag"] = *properties.ForceUpdateTag
 			if properties.AutoUpgradeMinorVersion != nil {
 				e["auto_upgrade_minor_version"] = *properties.AutoUpgradeMinorVersion
 			}
@@ -1700,38 +1603,6 @@ func flattenAzureRmVirtualMachineScaleSetExtensionProfile(profile *compute.Virtu
 	}
 
 	return result, nil
-}
-
-func flattenArmVirtualMachineScaleSetAutomaticRepairsPolicy(input *compute.AutomaticRepairsPolicy) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	if enabled := input.Enabled; enabled != nil {
-		result["enabled"] = *enabled
-	}
-	if gracePeriod := input.GracePeriod; gracePeriod != nil {
-		result["grace_period"] = *gracePeriod
-	}
-	if maxInstanceRepairsPercent := input.MaxInstanceRepairsPercent; maxInstanceRepairsPercent != nil {
-		result["max_instance_repairs_percent"] = *maxInstanceRepairsPercent
-	}
-
-	return []interface{}{result}
-}
-
-func flattenArmVirtualMachineScaleSetScaleInPolicy(input *compute.ScaleInPolicy) []interface{} {
-	if input == nil {
-		return make([]interface{}, 0)
-	}
-
-	result := make(map[string]interface{})
-
-	result["scale_in_policy_rules"] = flattenArmVirtualMachineScaleSetVirtualMachineScaleSetScaleInRules(input.Rules)
-
-	return []interface{}{result}
 }
 
 func flattenArmVirtualMachineScaleSetVirtualMachineScaleSetScaleInRules(input *[]compute.VirtualMachineScaleSetScaleInRules) []interface{} {
@@ -2201,22 +2072,6 @@ func expandAzureRmVirtualMachineScaleSetIdentity(d *schema.ResourceData) *comput
 	return &vmssIdentity
 }
 
-func expandArmVirtualMachineScaleSetAutomaticRepairsPolicy(d *schema.ResourceData) *compute.AutomaticRepairsPolicy {
-	policies := d.Get("automatic_repairs_policy").([]interface{})
-	v := policies[0].(map[string]interface{})
-
-	enabled := v["enabled"].(bool)
-	gracePeriod := v["grace_period"].(string)
-	maxInstanceRepairsPercent := v["max_instance_repairs_percent"].(int32)
-
-	result := compute.AutomaticRepairsPolicy{
-		Enabled:                   utils.Bool(enabled),
-		GracePeriod:               utils.String(gracePeriod),
-		MaxInstanceRepairsPercent: utils.Int32(maxInstanceRepairsPercent),
-	}
-	return &result
-}
-
 func expandAzureRMVirtualMachineScaleSetsStorageProfileOsDisk(d *schema.ResourceData) (*compute.VirtualMachineScaleSetOSDisk, error) {
 	osDiskConfigs := d.Get("storage_profile_os_disk").(*schema.Set).List()
 
@@ -2414,11 +2269,6 @@ func expandAzureRmVirtualMachineScaleSetOsProfileWindowsConfig(d *schema.Resourc
 		config.EnableAutomaticUpdates = &update
 	}
 
-	if v := osProfileConfig["time_zone"]; v != nil {
-		timeZone := v.(string)
-		config.TimeZone = &timeZone
-	}
-
 	if v := osProfileConfig["winrm"]; v != nil {
 		winRm := v.([]interface{})
 		if len(winRm) > 0 {
@@ -2518,7 +2368,6 @@ func expandAzureRMVirtualMachineScaleSetExtensions(d *schema.ResourceData) (*com
 		publisher := config["publisher"].(string)
 		t := config["type"].(string)
 		version := config["type_handler_version"].(string)
-		forceUpdateTag := config["force_update_tag"].(string)
 
 		extension := compute.VirtualMachineScaleSetExtension{
 			Name: &name,
@@ -2526,7 +2375,6 @@ func expandAzureRMVirtualMachineScaleSetExtensions(d *schema.ResourceData) (*com
 				Publisher:          &publisher,
 				Type:               &t,
 				TypeHandlerVersion: &version,
-				ForceUpdateTag:     &forceUpdateTag,
 			},
 		}
 
@@ -2579,13 +2427,11 @@ func expandAzureRmVirtualMachineScaleSetPlan(d *schema.ResourceData) (*compute.P
 	publisher := planConfig["publisher"].(string)
 	name := planConfig["name"].(string)
 	product := planConfig["product"].(string)
-	promotion := planConfig["promotion_code"].(string)
 
 	return &compute.Plan{
-		Publisher:     &publisher,
-		Name:          &name,
-		Product:       &product,
-		PromotionCode: &promotion,
+		Publisher: &publisher,
+		Name:      &name,
+		Product:   &product,
 	}, nil
 }
 
@@ -2595,7 +2441,6 @@ func flattenAzureRmVirtualMachineScaleSetPlan(plan *compute.Plan) []interface{} 
 	result["name"] = *plan.Name
 	result["publisher"] = *plan.Publisher
 	result["product"] = *plan.Product
-	result["promotion_code"] = *plan.PromotionCode
 
 	return []interface{}{result}
 }
@@ -2624,28 +2469,4 @@ func azureRmVirtualMachineScaleSetCustomizeDiff(d *schema.ResourceDiff, _ interf
 		}
 	}
 	return nil
-}
-
-func expandArmVirtualMachineScaleSetScaleInPolicy(input []interface{}) *compute.ScaleInPolicy {
-	if len(input) == 0 {
-		return nil
-	}
-	v := input[0].(map[string]interface{})
-
-	scaleInPolicyRules := v["scale_in_policy_rules"].([]interface{})
-
-	result := compute.ScaleInPolicy{
-		Rules: expandArmVirtualMachineScaleSetScaleInRules(scaleInPolicyRules),
-	}
-	return &result
-}
-
-func expandArmVirtualMachineScaleSetScaleInRules(input []interface{}) *[]compute.VirtualMachineScaleSetScaleInRules {
-	results := make([]compute.VirtualMachineScaleSetScaleInRules, 0)
-	for _, item := range input {
-		v := item.(string)
-		result := compute.VirtualMachineScaleSetScaleInRules(v)
-		results = append(results, result)
-	}
-	return &results
 }
