@@ -448,22 +448,13 @@ func resourceArmVirtualMachine() *schema.Resource {
 						"caching": {
 							Type:     schema.TypeString,
 							Optional: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.CachingTypesNone),
-								string(compute.CachingTypesReadOnly),
-								string(compute.CachingTypesReadWrite),
-							}, false),
-							Default: string(compute.CachingTypesNone),
+							Computed: true,
 						},
 
 						"create_option": {
-							Type:     schema.TypeString,
-							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.DiskCreateOptionTypesFromImage),
-								string(compute.DiskCreateOptionTypesEmpty),
-								string(compute.DiskCreateOptionTypesAttach),
-							}, true),
+							Type:             schema.TypeString,
+							Required:         true,
+							DiffSuppressFunc: suppress.CaseDifference,
 						},
 
 						"disk_size_gb": {
@@ -479,18 +470,10 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Default:  false,
 						},
 
-						"diff_disk_option": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.Local),
-							}, false),
-							Default: string(compute.Local),
-						},
-
 						"managed_disk_encryption_set_id": {
-							Type:     schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: azure.ValidateResourceID,
 						},
 					},
 				},
@@ -538,24 +521,15 @@ func resourceArmVirtualMachine() *schema.Resource {
 						},
 
 						"create_option": {
-							Type:     schema.TypeString,
-							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.DiskCreateOptionTypesFromImage),
-								string(compute.DiskCreateOptionTypesEmpty),
-								string(compute.DiskCreateOptionTypesAttach),
-							}, true),
+							Type:             schema.TypeString,
+							Required:         true,
+							DiffSuppressFunc: suppress.CaseDifference,
 						},
 
 						"caching": {
 							Type:     schema.TypeString,
 							Optional: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.CachingTypesNone),
-								string(compute.CachingTypesReadOnly),
-								string(compute.CachingTypesReadWrite),
-							}, false),
-							Default: string(compute.CachingTypesNone),
+							Computed: true,
 						},
 
 						"disk_size_gb": {
@@ -573,11 +547,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
-						},
-
-						"to_be_detached": {
-							Type:     schema.TypeBool,
-							Optional: true,
 						},
 
 						"managed_disk_encryption_set_id": {
@@ -1501,10 +1470,6 @@ func flattenAzureRmVirtualMachineDataDisk(disks *[]compute.DataDisk, disksInfo [
 			l["write_accelerator_enabled"] = *disk.WriteAcceleratorEnabled
 		}
 
-		if v := disk.ToBeDetached; v != nil {
-			l["to_be_detached"] = *disk.ToBeDetached
-		}
-
 		flattenAzureRmVirtualMachineReviseDiskInfo(l, disksInfo[i])
 
 		result[i] = l
@@ -1647,10 +1612,6 @@ func flattenAzureRmVirtualMachineOsDisk(disk *compute.OSDisk, diskInfo *compute.
 
 	if v := disk.WriteAcceleratorEnabled; v != nil {
 		result["write_accelerator_enabled"] = *disk.WriteAcceleratorEnabled
-	}
-
-	if v := disk.DiffDiskSettings; v != nil {
-		result["diff_disk_option"] = string(v.Option)
 	}
 
 	if v := disk.ManagedDisk; v != nil {
@@ -2000,10 +1961,6 @@ func expandAzureRmVirtualMachineDataDisk(d *schema.ResourceData) ([]compute.Data
 			dataDisk.WriteAcceleratorEnabled = utils.Bool(v)
 		}
 
-		if v, ok := config["to_be_detached"].(bool); ok {
-			dataDisk.ToBeDetached = utils.Bool(v)
-		}
-
 		dataDisks = append(dataDisks, dataDisk)
 	}
 
@@ -2111,12 +2068,10 @@ func expandAzureRmVirtualMachineOsDisk(d *schema.ResourceData) (*compute.OSDisk,
 	vhdURI := config["vhd_uri"].(string)
 	managedDiskType := config["managed_disk_type"].(string)
 	managedDiskID := config["managed_disk_id"].(string)
-	diffDiskOption := config["diff_disk_option"].(string)
 
 	osDisk := &compute.OSDisk{
-		Name:             &name,
-		CreateOption:     compute.DiskCreateOptionTypes(createOption),
-		DiffDiskSettings: &compute.DiffDiskSettings{Option: compute.DiffDiskOptions(diffDiskOption)},
+		Name:         &name,
+		CreateOption: compute.DiskCreateOptionTypes(createOption),
 	}
 
 	if vhdURI != "" {
@@ -2172,8 +2127,10 @@ func expandAzureRmVirtualMachineOsDisk(d *schema.ResourceData) (*compute.OSDisk,
 	}
 
 	if managedDiskEncryptionSetId, ok := config["managed_disk_encryption_set_id"]; ok {
-		osDisk.ManagedDisk.DiskEncryptionSet = &compute.DiskEncryptionSetParameters{
-			ID: utils.String(managedDiskEncryptionSetId.(string)),
+		if id := managedDiskEncryptionSetId.(string); id != "" {
+			osDisk.ManagedDisk.DiskEncryptionSet = &compute.DiskEncryptionSetParameters{
+				ID: utils.String(managedDiskEncryptionSetId.(string)),
+			}
 		}
 	}
 
