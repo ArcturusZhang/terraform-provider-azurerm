@@ -154,18 +154,6 @@ func resourceArmKeyVault() *schema.Resource {
 				Optional: true,
 			},
 
-			"enable_soft_delete": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
-
-			"enable_purge_protection": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
-
 			"network_acls": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -286,20 +274,6 @@ func resourceArmKeyVaultCreateUpdate(d *schema.ResourceData, meta interface{}) e
 		Tags: tags.Expand(t),
 	}
 
-	if v, ok := d.GetOk("enable_soft_delete"); ok {
-		enableSoftDelete := v.(bool)
-		if enableSoftDelete {
-			parameters.Properties.EnableSoftDelete = &enableSoftDelete
-		}
-	}
-
-	if v, ok := d.GetOk("enable_purge_protection"); ok {
-		enablePurgeProtection := v.(bool)
-		if enablePurgeProtection {
-			parameters.Properties.EnablePurgeProtection = &enablePurgeProtection
-		}
-	}
-
 	// Locking this resource so we don't make modifications to it at the same time if there is a
 	// key vault access policy trying to update it as well
 	locks.ByName(name, keyVaultResourceName)
@@ -399,8 +373,6 @@ func resourceArmKeyVaultRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("enabled_for_disk_encryption", props.EnabledForDiskEncryption)
 		d.Set("enabled_for_template_deployment", props.EnabledForTemplateDeployment)
 		d.Set("vault_uri", props.VaultURI)
-		d.Set("enable_soft_delete", props.EnableSoftDelete)
-		d.Set("enable_purge_protection", props.EnablePurgeProtection)
 
 		if sku := props.Sku; sku != nil {
 			// Remove in 2.0
