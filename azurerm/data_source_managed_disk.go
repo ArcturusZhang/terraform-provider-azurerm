@@ -112,16 +112,7 @@ func dataSourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) erro
 		d.Set("disk_iops_read_write", props.DiskIOPSReadWrite)
 		d.Set("disk_mbps_read_write", props.DiskMBpsReadWrite)
 		d.Set("os_type", props.OsType)
-		d.Set("disk_size_bytes", int(*props.DiskSizeBytes))
-		d.Set("disk_state", string(props.DiskState))
-		if err := d.Set("encryption_settings", flattenManagedDiskEncryptionSettings(props.EncryptionSettingsCollection)); err != nil {
-			return fmt.Errorf("Error setting `encryption_settings`: %+v", err)
-		}
-		d.Set("hyperv_generation", string(props.HyperVGeneration))
-		d.Set("time_created", (props.TimeCreated).String())
-		d.Set("unique_id", props.UniqueID)
 	}
-	d.Set("managed_by", resp.ManagedBy)
 
 	d.Set("zones", utils.FlattenStringSlice(resp.Zones))
 

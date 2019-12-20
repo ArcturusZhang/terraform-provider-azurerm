@@ -152,41 +152,6 @@ func resourceArmManagedDisk() *schema.Resource {
 				ValidateFunc: azure.ValidateResourceID,
 			},
 
-			"hyperv_generation": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(compute.V1),
-					string(compute.V2),
-				}, false),
-				Default: string(compute.V1),
-			},
-
-			"disk_size_bytes": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-
-			"disk_state": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"managed_by": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"time_created": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"unique_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
 			"tags": tags.Schema(),
 		},
 	}
@@ -247,9 +212,6 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 	if v := d.Get("disk_size_gb"); v != 0 {
 		diskSize := int32(v.(int))
 		createDisk.DiskProperties.DiskSizeGB = &diskSize
-	}
-	if v, ok := d.GetOk("hyperv_generation"); ok {
-		createDisk.DiskProperties.HyperVGeneration = compute.HyperVGeneration(v.(string))
 	}
 
 	if strings.EqualFold(storageAccountType, string(compute.UltraSSDLRS)) {
@@ -391,8 +353,6 @@ func resourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) error 
 		d.Set("os_type", props.OsType)
 		d.Set("disk_iops_read_write", props.DiskIOPSReadWrite)
 		d.Set("disk_mbps_read_write", props.DiskMBpsReadWrite)
-		d.Set("disk_size_bytes", int(*props.DiskSizeBytes))
-		d.Set("disk_state", string(props.DiskState))
 
 		if encryption := props.Encryption; encryption != nil {
 			d.Set("encryption_type", string(encryption.Type))
@@ -402,9 +362,6 @@ func resourceArmManagedDiskRead(d *schema.ResourceData, meta interface{}) error 
 		if err := d.Set("encryption_settings", flattenManagedDiskEncryptionSettings(props.EncryptionSettingsCollection)); err != nil {
 			return fmt.Errorf("Error setting `encryption_settings`: %+v", err)
 		}
-		d.Set("hyperv_generation", string(props.HyperVGeneration))
-		d.Set("time_created", (props.TimeCreated).String())
-		d.Set("unique_id", props.UniqueID)
 	}
 
 	return tags.FlattenAndSet(d, resp.Tags)
