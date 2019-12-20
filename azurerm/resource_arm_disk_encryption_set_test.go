@@ -28,17 +28,17 @@ func TestAccAzureRMDiskEncryptionSet_basic(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testCheckAzureRMDiskEncryptionSetDestroy,
 		Steps: []resource.TestStep{
+			// This test step is temporary due to freezing of functions in keyVault.
+			// After applying soft-delete and purge-protection in keyVault, this extra step can be removed.
 			{
-				Config:             testAccPrepareKeyvaultAndKey(resourceGroup, location, vaultName, keyName),
-				ExpectNonEmptyPlan: true,
-				Destroy:            false,
-				//Check: resource.ComposeTestCheckFunc(
-				//	//testCheckAzureRMKeyVaultExists("azurerm_key_vault.test"),
-				//	testEnableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName),
-				//),
+				Config:  testAccPrepareKeyvaultAndKey(resourceGroup, location, vaultName, keyName),
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMKeyVaultExists("azurerm_key_vault.test"),
+				),
 			},
 			{
-				PreConfig: func() { testEnableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName) },
+				PreConfig: func() { enableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName) },
 				Config:    testAccAzureRMDiskEncryptionSet_basic(resourceGroup, location, vaultName, keyName, desName),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureRMDiskEncryptionSetExists(resourceName),
@@ -103,7 +103,7 @@ func testCheckAzureRMDiskEncryptionSetDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testEnableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName string) resource.TestCheckFunc {
+func enableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		armClient := testAccProvider.Meta().(*ArmClient)
 		client := armClient.KeyVault.VaultsClient
