@@ -1,18 +1,22 @@
 package azurerm
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
+	"github.com/hashicorp/go-azure-helpers/response"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/response"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/features"
+	azcompute "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/compute"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 )
 
@@ -23,6 +27,13 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 		Update: resourceArmDiskEncryptionSetCreateUpdate,
 		Delete: resourceArmDiskEncryptionSetDelete,
 
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(60 * time.Minute),
+			Read:   schema.DefaultTimeout(5 * time.Minute),
+			Update: schema.DefaultTimeout(60 * time.Minute),
+			Delete: schema.DefaultTimeout(60 * time.Minute),
+		},
+
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
 		},
@@ -32,7 +43,7 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				ValidateFunc: validate.NoEmptyStrings,
+				ValidateFunc: azcompute.ValidateDiskEncryptionSetName,
 			},
 
 			"location": azure.SchemaLocation(),
@@ -41,7 +52,9 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 
 			"active_key": {
 				Type:     schema.TypeList,
-				Optional: true,
+				Required: true,
+				// the forceNew is enabled because currently key rotation is not supported, you cannot change the key vault and key associated with disk encryption set.
+				ForceNew: true,
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -111,7 +124,8 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 
 func resourceArmDiskEncryptionSetCreateUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx := meta.(*ArmClient).StopContext
+	ctx, cancel := timeouts.ForCreateUpdate(meta.(*ArmClient).StopContext, d)
+	defer cancel()
 
 	name := d.Get("name").(string)
 	resourceGroup := d.Get("resource_group_name").(string)
@@ -142,6 +156,16 @@ func resourceArmDiskEncryptionSetCreateUpdate(d *schema.ResourceData, meta inter
 
 	if v, ok := d.GetOk("identity"); ok {
 		diskEncryptionSet.Identity = expandArmDiskEncryptionSetIdentity(v.([]interface{}))
+	} else {
+		diskEncryptionSet.Identity = &compute.EncryptionSetIdentity{
+			Type: compute.SystemAssigned,
+		}
+	}
+
+	// validate whether the keyvault has soft-delete and purge-protection enabled
+	err := validateKeyVaultAndKey(ctx, meta, resourceGroup, diskEncryptionSet.ActiveKey)
+	if err != nil {
+		return fmt.Errorf("Error creating Disk Encryption Set %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
 	future, err := client.CreateOrUpdate(ctx, resourceGroup, name, diskEncryptionSet)
@@ -164,9 +188,45 @@ func resourceArmDiskEncryptionSetCreateUpdate(d *schema.ResourceData, meta inter
 	return resourceArmDiskEncryptionSetRead(d, meta)
 }
 
+func validateKeyVaultAndKey(ctx context.Context, meta interface{}, resourceGroup string, keyVaultAndKey *compute.KeyVaultAndKeyReference) error {
+	armClient := meta.(*ArmClient)
+	if keyVaultAndKey == nil {
+		return nil
+	}
+	if keyVault := keyVaultAndKey.SourceVault; keyVault != nil {
+		if keyVaultId := keyVault.ID; keyVaultId != nil {
+			client := armClient.KeyVault.VaultsClient
+			parsedId, err := azure.ParseAzureResourceID(*keyVaultId)
+			if err != nil {
+				return fmt.Errorf("Error parsing ID for keyvault in Disk Encryption Set: %+v", err)
+			}
+			keyVaultName := parsedId.Path["name"]
+			log.Printf("[INFO] Keyvault name input in Disk Encryption Set: %s", keyVaultName)
+			resp, err := client.Get(ctx, resourceGroup, keyVaultName)
+			if err != nil {
+				return fmt.Errorf("Error reading keyvault %q (Resource Group %q): %+v", keyVaultName, resourceGroup, err)
+			}
+			if props := resp.Properties; props != nil {
+				if softDelete := props.EnableSoftDelete; softDelete != nil {
+					if !*softDelete {
+						return fmt.Errorf("the keyvault in Disk Encryption Set must enable soft delete")
+					}
+				}
+				if purgeProtection := props.EnablePurgeProtection; purgeProtection != nil {
+					if !*purgeProtection {
+						return fmt.Errorf("the keyvault in Disk Encryption Set must enable purge protection")
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func resourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx := meta.(*ArmClient).StopContext
+	ctx, cancel := timeouts.ForRead(meta.(*ArmClient).StopContext, d)
+	defer cancel()
 
 	id, err := azure.ParseAzureResourceID(d.Id())
 	if err != nil {
@@ -209,7 +269,8 @@ func resourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}) 
 
 func resourceArmDiskEncryptionSetDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx := meta.(*ArmClient).StopContext
+	ctx, cancel := timeouts.ForDelete(meta.(*ArmClient).StopContext, d)
+	defer cancel()
 
 	id, err := azure.ParseAzureResourceID(d.Id())
 	if err != nil {

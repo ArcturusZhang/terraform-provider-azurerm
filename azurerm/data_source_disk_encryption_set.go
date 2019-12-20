@@ -2,17 +2,26 @@ package azurerm
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 )
 
 func dataSourceArmDiskEncryptionSet() *schema.Resource {
 	return &schema.Resource{
 		Read: dataSourceArmDiskEncryptionSetRead,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(30 * time.Minute),
+			Read:   schema.DefaultTimeout(5 * time.Minute),
+			Update: schema.DefaultTimeout(30 * time.Minute),
+			Delete: schema.DefaultTimeout(30 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -44,7 +53,7 @@ func dataSourceArmDiskEncryptionSet() *schema.Resource {
 
 			"identity": {
 				Type:     schema.TypeList,
-				Optional: true,
+				Computed: true,
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -88,7 +97,8 @@ func dataSourceArmDiskEncryptionSet() *schema.Resource {
 
 func dataSourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx := meta.(*ArmClient).StopContext
+	ctx, cancel := timeouts.ForRead(meta.(*ArmClient).StopContext, d)
+	defer cancel()
 
 	name := d.Get("name").(string)
 	resourceGroup := d.Get("resource_group_name").(string)

@@ -261,8 +261,6 @@ func resourceArmKeyVaultCreateUpdate(d *schema.ResourceData, meta interface{}) e
 	enabledForDeployment := d.Get("enabled_for_deployment").(bool)
 	enabledForDiskEncryption := d.Get("enabled_for_disk_encryption").(bool)
 	enabledForTemplateDeployment := d.Get("enabled_for_template_deployment").(bool)
-	enableSoftDelete := d.Get("enable_soft_delete").(bool)
-	enablePurgeProtection := d.Get("enable_purge_protection").(bool)
 	t := d.Get("tags").(map[string]interface{})
 
 	networkAclsRaw := d.Get("network_acls").([]interface{})
@@ -283,11 +281,23 @@ func resourceArmKeyVaultCreateUpdate(d *schema.ResourceData, meta interface{}) e
 			EnabledForDeployment:         &enabledForDeployment,
 			EnabledForDiskEncryption:     &enabledForDiskEncryption,
 			EnabledForTemplateDeployment: &enabledForTemplateDeployment,
-			EnableSoftDelete:             &enableSoftDelete,
-			EnablePurgeProtection:        &enablePurgeProtection,
 			NetworkAcls:                  networkAcls,
 		},
 		Tags: tags.Expand(t),
+	}
+
+	if v, ok := d.GetOk("enable_soft_delete"); ok {
+		enableSoftDelete := v.(bool)
+		if enableSoftDelete {
+			parameters.Properties.EnableSoftDelete = &enableSoftDelete
+		}
+	}
+
+	if v, ok := d.GetOk("enable_purge_protection"); ok {
+		enablePurgeProtection := v.(bool)
+		if enablePurgeProtection {
+			parameters.Properties.EnablePurgeProtection = &enablePurgeProtection
+		}
 	}
 
 	// Locking this resource so we don't make modifications to it at the same time if there is a
