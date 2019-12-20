@@ -10,6 +10,7 @@ import (
 )
 
 func TestAccDataSourceAzureRMDiskEncryptionSet_basic(t *testing.T) {
+	dataSourceName := "data.azurerm_disk_encryption_set.test"
 	ri := tf.AccRandTimeInt()
 	rs := acctest.RandString(6)
 	resourceGroup := fmt.Sprintf("acctestRG-%d", ri)
@@ -19,12 +20,34 @@ func TestAccDataSourceAzureRMDiskEncryptionSet_basic(t *testing.T) {
 	location := testLocation()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testCheckAzureRMDiskEncryptionSetDestroy,
 		Steps: []resource.TestStep{
+			// These two steps are used for setting up a valid keyVault, which enables soft-delete and purge protection.
+			{
+				Config:  testAccPrepareKeyvaultAndKey(resourceGroup, location, vaultName, keyName),
+				Destroy: false,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMKeyVaultExists("azurerm_key_vault.test"),
+				),
+			},
+			// This step is not negligible, without this step, the final step will fail on refresh complaining `Disk Encryption Set does not exist`
+			{
+				PreConfig: func() { enableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName) },
+				Config:    testAccAzureRMDiskEncryptionSet_basic(resourceGroup, location, vaultName, keyName, desName),
+			},
 			{
 				Config: testAccDataSourceDiskEncryptionSet_basic(resourceGroup, location, vaultName, keyName, desName),
-				Check:  resource.ComposeTestCheckFunc(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(dataSourceName, "identity.#", "1"),
+					resource.TestCheckResourceAttr(dataSourceName, "identity.0.type", "SystemAssigned"),
+					resource.TestCheckResourceAttrSet(dataSourceName, "identity.0.principal_id"),
+					resource.TestCheckResourceAttrSet(dataSourceName, "identity.0.tenant_id"),
+					resource.TestCheckResourceAttr(dataSourceName, "active_key.#", "1"),
+					resource.TestCheckResourceAttrSet(dataSourceName, "active_key.0.source_vault_id"),
+					resource.TestCheckResourceAttrSet(dataSourceName, "active_key.0.key_url"),
+				),
 			},
 		},
 	})
