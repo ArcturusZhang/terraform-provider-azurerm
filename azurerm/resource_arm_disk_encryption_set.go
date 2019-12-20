@@ -3,6 +3,7 @@ package azurerm
 import (
 	"context"
 	"fmt"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"log"
 	"time"
 
@@ -124,8 +125,8 @@ func resourceArmDiskEncryptionSet() *schema.Resource {
 }
 
 func resourceArmDiskEncryptionSetCreateUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx, cancel := timeouts.ForCreateUpdate(meta.(*ArmClient).StopContext, d)
+	client := meta.(*clients.Client).Compute.DiskEncryptionSetsClient
+	ctx, cancel := timeouts.ForCreateUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
 	name := d.Get("name").(string)
@@ -190,7 +191,7 @@ func resourceArmDiskEncryptionSetCreateUpdate(d *schema.ResourceData, meta inter
 }
 
 func validateKeyVaultAndKey(ctx context.Context, meta interface{}, resourceGroup string, keyVaultAndKey *compute.KeyVaultAndKeyReference) error {
-	armClient := meta.(*ArmClient)
+	armClient := meta.(*clients.Client)
 	if keyVaultAndKey == nil {
 		return nil
 	}
@@ -225,8 +226,8 @@ func validateKeyVaultAndKey(ctx context.Context, meta interface{}, resourceGroup
 }
 
 func resourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx, cancel := timeouts.ForRead(meta.(*ArmClient).StopContext, d)
+	client := meta.(*clients.Client).Compute.DiskEncryptionSetsClient
+	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
 	id, err := azure.ParseAzureResourceID(d.Id())
@@ -269,8 +270,8 @@ func resourceArmDiskEncryptionSetRead(d *schema.ResourceData, meta interface{}) 
 }
 
 func resourceArmDiskEncryptionSetDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx, cancel := timeouts.ForDelete(meta.(*ArmClient).StopContext, d)
+	client := meta.(*clients.Client).Compute.DiskEncryptionSetsClient
+	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
 	defer cancel()
 
 	id, err := azure.ParseAzureResourceID(d.Id())

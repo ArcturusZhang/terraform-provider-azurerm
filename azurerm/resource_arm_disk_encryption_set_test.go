@@ -2,6 +2,8 @@ package azurerm
 
 import (
 	"fmt"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"log"
 	"testing"
 
@@ -21,11 +23,11 @@ func TestAccAzureRMDiskEncryptionSet_basic(t *testing.T) {
 	vaultName := fmt.Sprintf("vault%d", ri)
 	keyName := fmt.Sprintf("key-%s", rs)
 	desName := fmt.Sprintf("acctestdes-%d", ri)
-	location := testLocation()
+	location := acceptance.Location()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
 		CheckDestroy: testCheckAzureRMDiskEncryptionSetDestroy,
 		Steps: []resource.TestStep{
 			// This test step is temporary due to freezing of functions in keyVault.
@@ -65,8 +67,8 @@ func testCheckAzureRMDiskEncryptionSetExists(resourceName string) resource.TestC
 		name := rs.Primary.Attributes["name"]
 		resourceGroup := rs.Primary.Attributes["resource_group_name"]
 
-		client := testAccProvider.Meta().(*ArmClient).Compute.DiskEncryptionSetsClient
-		ctx := testAccProvider.Meta().(*ArmClient).StopContext
+		client := acceptance.AzureProvider.Meta().(*clients.Client).Compute.DiskEncryptionSetsClient
+		ctx := acceptance.AzureProvider.Meta().(*clients.Client).StopContext
 
 		if resp, err := client.Get(ctx, resourceGroup, name); err != nil {
 			if utils.ResponseWasNotFound(resp.Response) {
@@ -80,8 +82,8 @@ func testCheckAzureRMDiskEncryptionSetExists(resourceName string) resource.TestC
 }
 
 func testCheckAzureRMDiskEncryptionSetDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*ArmClient).Compute.DiskEncryptionSetsClient
-	ctx := testAccProvider.Meta().(*ArmClient).StopContext
+	client := acceptance.AzureProvider.Meta().(*clients.Client).Compute.DiskEncryptionSetsClient
+	ctx := acceptance.AzureProvider.Meta().(*clients.Client).StopContext
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "azurerm_disk_encryption_set" {
@@ -105,7 +107,7 @@ func testCheckAzureRMDiskEncryptionSetDestroy(s *terraform.State) error {
 
 func enableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		armClient := testAccProvider.Meta().(*ArmClient)
+		armClient := acceptance.AzureProvider.Meta().(*clients.Client)
 		client := armClient.KeyVault.VaultsClient
 		ctx := armClient.StopContext
 		vaultPatch := keyvault.VaultPatchParameters{

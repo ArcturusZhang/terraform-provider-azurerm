@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance"
 )
 
 func TestAccDataSourceAzureRMDiskEncryptionSet_basic(t *testing.T) {
@@ -17,11 +18,11 @@ func TestAccDataSourceAzureRMDiskEncryptionSet_basic(t *testing.T) {
 	vaultName := fmt.Sprintf("vault%d", ri)
 	keyName := fmt.Sprintf("key-%s", rs)
 	desName := fmt.Sprintf("acctestdes-%d", ri)
-	location := testLocation()
+	location := acceptance.Location()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
 		CheckDestroy: testCheckAzureRMDiskEncryptionSetDestroy,
 		Steps: []resource.TestStep{
 			// These two steps are used for setting up a valid keyVault, which enables soft-delete and purge protection.
