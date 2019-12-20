@@ -94,18 +94,6 @@ func resourceArmManagedDisk() *schema.Resource {
 				ForceNew: true,
 			},
 
-			"storage_account_id": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-			},
-
-			"upload_size_bytes": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-			},
-
 			"os_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -256,18 +244,6 @@ func resourceArmManagedDiskCreateUpdate(d *schema.ResourceData, meta interface{}
 			}
 		} else {
 			return fmt.Errorf("[ERROR] image_reference_id must be specified when create_option is `%s`", compute.FromImage)
-		}
-	} else if strings.EqualFold(createOption, string(compute.Import)) {
-		if storageAccountId := d.Get("storage_account_id").(string); storageAccountId != "" {
-			createDisk.CreationData.StorageAccountID = &storageAccountId
-		} else {
-			return fmt.Errorf("[ERROR] storage_account_id must be specified when create_option is `%s`", compute.Import)
-		}
-	} else if strings.EqualFold(createOption, string(compute.Upload)) {
-		if uploadSizeBytes, ok := d.GetOk("upload_size_bytes"); ok {
-			createDisk.CreationData.UploadSizeBytes = utils.Int64(uploadSizeBytes.(int64))
-		} else {
-			return fmt.Errorf("[ERROR] upload_size_bytes must be specified when create_option is `%s`", compute.Import)
 		}
 	}
 
