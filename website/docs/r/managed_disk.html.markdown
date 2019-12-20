@@ -117,6 +117,8 @@ The following arguments are supported:
 
 * `managed_disk_encryption_set_id` - (Optional) ID of the disk encryption set to use for enabling encryption at rest.
 
+-> **NOTE** To associate a custom Disk Encryption Set to a managed disk, you must grant access of the KeyVault for the Disk Encryption Set. For instructions, please refer to the doc of [Server side encryption of Azure managed disks](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/disk-encryption).
+
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 
 * `zones` - (Optional) A collection containing the availability zone to allocate the Managed Disk in.
