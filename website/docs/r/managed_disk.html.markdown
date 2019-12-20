@@ -113,6 +113,10 @@ The following arguments are supported:
 
 * `encryption_settings` - (Optional) an `encryption_settings` block as defined below.
 
+* `encryption_type` - (Optional) The type of key used to encrypt the data of the disk. Valid values are `EncryptionAtRestWithPlatformKey` or `EncryptionAtRestWithCustomerKey`. Default value is `EncryptionAtRestWithPlatformKey`. When set to `EncryptionAtRestWithPlatformKey`, the disk is encrypted with XStore managed key at rest. When set to `EncryptionAtRestWithCustomerKey`, the disk is encrypted with Customer managed key at rest, and the `managed_disk_encryption_set_id` must be set to a valid `azurerm_disk_encryption_set` ID.
+
+* `managed_disk_encryption_set_id` - (Optional) ID of the disk encryption set to use for enabling encryption at rest.
+
 * `tags` - (Optional) A mapping of tags to assign to the resource.
 
 * `zones` - (Optional) A collection containing the availability zone to allocate the Managed Disk in.
