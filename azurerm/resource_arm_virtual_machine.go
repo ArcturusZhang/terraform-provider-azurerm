@@ -170,177 +170,9 @@ func resourceArmVirtualMachine() *schema.Resource {
 			},
 
 			"vm_size": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					string(compute.VirtualMachineSizeTypesBasicA0),
-					string(compute.VirtualMachineSizeTypesBasicA1),
-					string(compute.VirtualMachineSizeTypesBasicA2),
-					string(compute.VirtualMachineSizeTypesBasicA3),
-					string(compute.VirtualMachineSizeTypesBasicA4),
-					string(compute.VirtualMachineSizeTypesStandardA0),
-					string(compute.VirtualMachineSizeTypesStandardA1),
-					string(compute.VirtualMachineSizeTypesStandardA2),
-					string(compute.VirtualMachineSizeTypesStandardA3),
-					string(compute.VirtualMachineSizeTypesStandardA4),
-					string(compute.VirtualMachineSizeTypesStandardA5),
-					string(compute.VirtualMachineSizeTypesStandardA6),
-					string(compute.VirtualMachineSizeTypesStandardA7),
-					string(compute.VirtualMachineSizeTypesStandardA8),
-					string(compute.VirtualMachineSizeTypesStandardA9),
-					string(compute.VirtualMachineSizeTypesStandardA10),
-					string(compute.VirtualMachineSizeTypesStandardA11),
-					string(compute.VirtualMachineSizeTypesStandardA1V2),
-					string(compute.VirtualMachineSizeTypesStandardA2V2),
-					string(compute.VirtualMachineSizeTypesStandardA4V2),
-					string(compute.VirtualMachineSizeTypesStandardA8V2),
-					string(compute.VirtualMachineSizeTypesStandardA2mV2),
-					string(compute.VirtualMachineSizeTypesStandardA4mV2),
-					string(compute.VirtualMachineSizeTypesStandardA8mV2),
-					string(compute.VirtualMachineSizeTypesStandardB1s),
-					string(compute.VirtualMachineSizeTypesStandardB1ms),
-					string(compute.VirtualMachineSizeTypesStandardB2s),
-					string(compute.VirtualMachineSizeTypesStandardB2ms),
-					string(compute.VirtualMachineSizeTypesStandardB4ms),
-					string(compute.VirtualMachineSizeTypesStandardB8ms),
-					string(compute.VirtualMachineSizeTypesStandardD1),
-					string(compute.VirtualMachineSizeTypesStandardD2),
-					string(compute.VirtualMachineSizeTypesStandardD3),
-					string(compute.VirtualMachineSizeTypesStandardD4),
-					string(compute.VirtualMachineSizeTypesStandardD11),
-					string(compute.VirtualMachineSizeTypesStandardD12),
-					string(compute.VirtualMachineSizeTypesStandardD13),
-					string(compute.VirtualMachineSizeTypesStandardD14),
-					string(compute.VirtualMachineSizeTypesStandardD1V2),
-					string(compute.VirtualMachineSizeTypesStandardD2V2),
-					string(compute.VirtualMachineSizeTypesStandardD3V2),
-					string(compute.VirtualMachineSizeTypesStandardD4V2),
-					string(compute.VirtualMachineSizeTypesStandardD5V2),
-					string(compute.VirtualMachineSizeTypesStandardD2V3),
-					string(compute.VirtualMachineSizeTypesStandardD4V3),
-					string(compute.VirtualMachineSizeTypesStandardD8V3),
-					string(compute.VirtualMachineSizeTypesStandardD16V3),
-					string(compute.VirtualMachineSizeTypesStandardD32V3),
-					string(compute.VirtualMachineSizeTypesStandardD64V3),
-					string(compute.VirtualMachineSizeTypesStandardD2sV3),
-					string(compute.VirtualMachineSizeTypesStandardD4sV3),
-					string(compute.VirtualMachineSizeTypesStandardD8sV3),
-					string(compute.VirtualMachineSizeTypesStandardD16sV3),
-					string(compute.VirtualMachineSizeTypesStandardD32sV3),
-					string(compute.VirtualMachineSizeTypesStandardD64sV3),
-					string(compute.VirtualMachineSizeTypesStandardD11V2),
-					string(compute.VirtualMachineSizeTypesStandardD12V2),
-					string(compute.VirtualMachineSizeTypesStandardD13V2),
-					string(compute.VirtualMachineSizeTypesStandardD14V2),
-					string(compute.VirtualMachineSizeTypesStandardD15V2),
-					string(compute.VirtualMachineSizeTypesStandardDS1),
-					string(compute.VirtualMachineSizeTypesStandardDS2),
-					string(compute.VirtualMachineSizeTypesStandardDS3),
-					string(compute.VirtualMachineSizeTypesStandardDS4),
-					string(compute.VirtualMachineSizeTypesStandardDS11),
-					string(compute.VirtualMachineSizeTypesStandardDS12),
-					string(compute.VirtualMachineSizeTypesStandardDS13),
-					string(compute.VirtualMachineSizeTypesStandardDS14),
-					string(compute.VirtualMachineSizeTypesStandardDS1V2),
-					string(compute.VirtualMachineSizeTypesStandardDS2V2),
-					string(compute.VirtualMachineSizeTypesStandardDS3V2),
-					string(compute.VirtualMachineSizeTypesStandardDS4V2),
-					string(compute.VirtualMachineSizeTypesStandardDS5V2),
-					string(compute.VirtualMachineSizeTypesStandardDS11V2),
-					string(compute.VirtualMachineSizeTypesStandardDS12V2),
-					string(compute.VirtualMachineSizeTypesStandardDS13V2),
-					string(compute.VirtualMachineSizeTypesStandardDS14V2),
-					string(compute.VirtualMachineSizeTypesStandardDS15V2),
-					string(compute.VirtualMachineSizeTypesStandardDS134V2),
-					string(compute.VirtualMachineSizeTypesStandardDS132V2),
-					string(compute.VirtualMachineSizeTypesStandardDS148V2),
-					string(compute.VirtualMachineSizeTypesStandardDS144V2),
-					string(compute.VirtualMachineSizeTypesStandardE2V3),
-					string(compute.VirtualMachineSizeTypesStandardE4V3),
-					string(compute.VirtualMachineSizeTypesStandardE8V3),
-					string(compute.VirtualMachineSizeTypesStandardE16V3),
-					string(compute.VirtualMachineSizeTypesStandardE32V3),
-					string(compute.VirtualMachineSizeTypesStandardE64V3),
-					string(compute.VirtualMachineSizeTypesStandardE2sV3),
-					string(compute.VirtualMachineSizeTypesStandardE4sV3),
-					string(compute.VirtualMachineSizeTypesStandardE8sV3),
-					string(compute.VirtualMachineSizeTypesStandardE16sV3),
-					string(compute.VirtualMachineSizeTypesStandardE32sV3),
-					string(compute.VirtualMachineSizeTypesStandardE64sV3),
-					string(compute.VirtualMachineSizeTypesStandardE3216V3),
-					string(compute.VirtualMachineSizeTypesStandardE328sV3),
-					string(compute.VirtualMachineSizeTypesStandardE6432sV3),
-					string(compute.VirtualMachineSizeTypesStandardE6416sV3),
-					string(compute.VirtualMachineSizeTypesStandardF1),
-					string(compute.VirtualMachineSizeTypesStandardF2),
-					string(compute.VirtualMachineSizeTypesStandardF4),
-					string(compute.VirtualMachineSizeTypesStandardF8),
-					string(compute.VirtualMachineSizeTypesStandardF16),
-					string(compute.VirtualMachineSizeTypesStandardF1s),
-					string(compute.VirtualMachineSizeTypesStandardF2s),
-					string(compute.VirtualMachineSizeTypesStandardF4s),
-					string(compute.VirtualMachineSizeTypesStandardF8s),
-					string(compute.VirtualMachineSizeTypesStandardF16s),
-					string(compute.VirtualMachineSizeTypesStandardF2sV2),
-					string(compute.VirtualMachineSizeTypesStandardF4sV2),
-					string(compute.VirtualMachineSizeTypesStandardF8sV2),
-					string(compute.VirtualMachineSizeTypesStandardF16sV2),
-					string(compute.VirtualMachineSizeTypesStandardF32sV2),
-					string(compute.VirtualMachineSizeTypesStandardF64sV2),
-					string(compute.VirtualMachineSizeTypesStandardF72sV2),
-					string(compute.VirtualMachineSizeTypesStandardG1),
-					string(compute.VirtualMachineSizeTypesStandardG2),
-					string(compute.VirtualMachineSizeTypesStandardG3),
-					string(compute.VirtualMachineSizeTypesStandardG4),
-					string(compute.VirtualMachineSizeTypesStandardG5),
-					string(compute.VirtualMachineSizeTypesStandardGS1),
-					string(compute.VirtualMachineSizeTypesStandardGS2),
-					string(compute.VirtualMachineSizeTypesStandardGS3),
-					string(compute.VirtualMachineSizeTypesStandardGS4),
-					string(compute.VirtualMachineSizeTypesStandardGS5),
-					string(compute.VirtualMachineSizeTypesStandardGS48),
-					string(compute.VirtualMachineSizeTypesStandardGS44),
-					string(compute.VirtualMachineSizeTypesStandardGS516),
-					string(compute.VirtualMachineSizeTypesStandardGS58),
-					string(compute.VirtualMachineSizeTypesStandardH8),
-					string(compute.VirtualMachineSizeTypesStandardH16),
-					string(compute.VirtualMachineSizeTypesStandardH8m),
-					string(compute.VirtualMachineSizeTypesStandardH16m),
-					string(compute.VirtualMachineSizeTypesStandardH16r),
-					string(compute.VirtualMachineSizeTypesStandardH16mr),
-					string(compute.VirtualMachineSizeTypesStandardL4s),
-					string(compute.VirtualMachineSizeTypesStandardL8s),
-					string(compute.VirtualMachineSizeTypesStandardL16s),
-					string(compute.VirtualMachineSizeTypesStandardL32s),
-					string(compute.VirtualMachineSizeTypesStandardM64s),
-					string(compute.VirtualMachineSizeTypesStandardM64ms),
-					string(compute.VirtualMachineSizeTypesStandardM128s),
-					string(compute.VirtualMachineSizeTypesStandardM128ms),
-					string(compute.VirtualMachineSizeTypesStandardM6432ms),
-					string(compute.VirtualMachineSizeTypesStandardM6416ms),
-					string(compute.VirtualMachineSizeTypesStandardM12864ms),
-					string(compute.VirtualMachineSizeTypesStandardM12832ms),
-					string(compute.VirtualMachineSizeTypesStandardNC6),
-					string(compute.VirtualMachineSizeTypesStandardNC12),
-					string(compute.VirtualMachineSizeTypesStandardNC24),
-					string(compute.VirtualMachineSizeTypesStandardNC24r),
-					string(compute.VirtualMachineSizeTypesStandardNC6sV2),
-					string(compute.VirtualMachineSizeTypesStandardNC12sV2),
-					string(compute.VirtualMachineSizeTypesStandardNC24sV2),
-					string(compute.VirtualMachineSizeTypesStandardNC24rsV2),
-					string(compute.VirtualMachineSizeTypesStandardNC6sV3),
-					string(compute.VirtualMachineSizeTypesStandardNC12sV3),
-					string(compute.VirtualMachineSizeTypesStandardNC24sV3),
-					string(compute.VirtualMachineSizeTypesStandardNC24rsV3),
-					string(compute.VirtualMachineSizeTypesStandardND6s),
-					string(compute.VirtualMachineSizeTypesStandardND12s),
-					string(compute.VirtualMachineSizeTypesStandardND24s),
-					string(compute.VirtualMachineSizeTypesStandardND24rs),
-					string(compute.VirtualMachineSizeTypesStandardNV6),
-					string(compute.VirtualMachineSizeTypesStandardNV12),
-					string(compute.VirtualMachineSizeTypesStandardNV24),
-				}, false),
-				Default: string(compute.VirtualMachineSizeTypesBasicA0),
+				Type:             schema.TypeString,
+				Required:         true,
+				DiffSuppressFunc: suppress.CaseDifference,
 			},
 
 			//lintignore:S018
@@ -433,10 +265,9 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Computed:      true,
 							ConflictsWith: []string{"storage_os_disk.0.vhd_uri"},
 							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.StorageAccountTypesStandardLRS),
 								string(compute.StorageAccountTypesPremiumLRS),
+								string(compute.StorageAccountTypesStandardLRS),
 								string(compute.StorageAccountTypesStandardSSDLRS),
-								string(compute.StorageAccountTypesUltraSSDLRS),
 							}, true),
 						},
 
@@ -468,12 +299,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
-						},
-
-						"managed_disk_encryption_set_id": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: azure.ValidateResourceID,
 						},
 					},
 				},
@@ -535,6 +360,7 @@ func resourceArmVirtualMachine() *schema.Resource {
 						"disk_size_gb": {
 							Type:         schema.TypeInt,
 							Optional:     true,
+							Computed:     true,
 							ValidateFunc: validateDiskSizeGB,
 						},
 
@@ -547,12 +373,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
-						},
-
-						"managed_disk_encryption_set_id": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: azure.ValidateResourceID,
 						},
 					},
 				},
@@ -629,16 +449,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 							Computed:  true,
 							StateFunc: userDataStateFunc,
 						},
-
-						"allow_extension_operations": {
-							Type:     schema.TypeBool,
-							Optional: true,
-						},
-
-						"require_guest_provision_signal": {
-							Type:     schema.TypeBool,
-							Optional: true,
-						},
 					},
 				},
 				Set: resourceArmVirtualMachineStorageOsProfileHash,
@@ -677,9 +487,10 @@ func resourceArmVirtualMachine() *schema.Resource {
 										Type:     schema.TypeString,
 										Required: true,
 										ValidateFunc: validation.StringInSlice([]string{
-											string(compute.HTTP),
-											string(compute.HTTPS),
+											"HTTP",
+											"HTTPS",
 										}, true),
+										DiffSuppressFunc: suppress.CaseDifference,
 									},
 									"certificate_url": {
 										Type:     schema.TypeString,
@@ -698,22 +509,22 @@ func resourceArmVirtualMachine() *schema.Resource {
 										Type:     schema.TypeString,
 										Required: true,
 										ValidateFunc: validation.StringInSlice([]string{
-											string(compute.OobeSystem),
+											"oobeSystem",
 										}, false),
 									},
 									"component": {
 										Type:     schema.TypeString,
 										Required: true,
 										ValidateFunc: validation.StringInSlice([]string{
-											string(compute.MicrosoftWindowsShellSetup),
+											"Microsoft-Windows-Shell-Setup",
 										}, false),
 									},
 									"setting_name": {
 										Type:     schema.TypeString,
 										Required: true,
 										ValidateFunc: validation.StringInSlice([]string{
-											string(compute.AutoLogon),
-											string(compute.FirstLogonCommands),
+											"AutoLogon",
+											"FirstLogonCommands",
 										}, false),
 									},
 									"content": {
@@ -740,10 +551,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 						"disable_password_authentication": {
 							Type:     schema.TypeBool,
 							Required: true,
-						},
-						"provision_vm_agent": {
-							Type:     schema.TypeBool,
-							Optional: true,
 						},
 						"ssh_keys": {
 							Type:     schema.TypeList,
@@ -808,12 +615,6 @@ func resourceArmVirtualMachine() *schema.Resource {
 			"primary_network_interface_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-			},
-
-			"virtual_machine_scale_set_id": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				DiffSuppressFunc: suppress.CaseDifference,
 			},
 
 			"tags": tags.Schema(),
@@ -921,12 +722,6 @@ func resourceArmVirtualMachineCreateUpdate(d *schema.ResourceData, meta interfac
 		}
 	}
 
-	if v, ok := d.GetOk("virtual_machine_scale_set_id"); ok {
-		properties.VirtualMachineScaleSet = &compute.SubResource{
-			ID: utils.String(v.(string)),
-		}
-	}
-
 	vm := compute.VirtualMachine{
 		Name:                     &name,
 		Location:                 &location,
@@ -1029,10 +824,6 @@ func resourceArmVirtualMachineRead(d *schema.ResourceData, meta interface{}) err
 	}
 
 	if props := resp.VirtualMachineProperties; props != nil {
-		if vmss := props.VirtualMachineScaleSet; vmss != nil {
-			d.Set("virtual_machine_scale_set_id", *vmss.ID)
-		}
-
 		if availabilitySet := props.AvailabilitySet; availabilitySet != nil {
 			// Lowercase due to incorrect capitalisation of resource group name in
 			// availability set ID in response from get VM API request
@@ -1453,9 +1244,6 @@ func flattenAzureRmVirtualMachineDataDisk(disks *[]compute.DataDisk, disksInfo [
 			if disk.ManagedDisk.ID != nil {
 				l["managed_disk_id"] = *disk.ManagedDisk.ID
 			}
-			if disk.ManagedDisk.DiskEncryptionSet != nil && disk.ManagedDisk.DiskEncryptionSet.ID != nil {
-				l["managed_disk_encryption_set_id"] = *disk.ManagedDisk.DiskEncryptionSet.ID
-			}
 		}
 		l["create_option"] = disk.CreateOption
 		l["caching"] = string(disk.Caching)
@@ -1483,12 +1271,6 @@ func flattenAzureRmVirtualMachineOsProfile(input *compute.OSProfile) []interface
 	result["admin_username"] = *input.AdminUsername
 	if input.CustomData != nil {
 		result["custom_data"] = *input.CustomData
-	}
-	if v := input.AllowExtensionOperations; v != nil {
-		result["allow_extension_operations"] = *input.AllowExtensionOperations
-	}
-	if v := input.RequireGuestProvisionSignal; v != nil {
-		result["require_guest_provision_signal"] = *input.RequireGuestProvisionSignal
 	}
 
 	return []interface{}{result}
@@ -1560,10 +1342,6 @@ func flattenAzureRmVirtualMachineOsProfileLinuxConfiguration(config *compute.Lin
 		result["disable_password_authentication"] = *config.DisablePasswordAuthentication
 	}
 
-	if config.ProvisionVMAgent != nil {
-		result["provision_vm_agent"] = *config.ProvisionVMAgent
-	}
-
 	if config.SSH != nil && config.SSH.PublicKeys != nil && len(*config.SSH.PublicKeys) > 0 {
 		ssh_keys := make([]map[string]interface{}, 0)
 		for _, i := range *config.SSH.PublicKeys {
@@ -1612,14 +1390,6 @@ func flattenAzureRmVirtualMachineOsDisk(disk *compute.OSDisk, diskInfo *compute.
 
 	if v := disk.WriteAcceleratorEnabled; v != nil {
 		result["write_accelerator_enabled"] = *disk.WriteAcceleratorEnabled
-	}
-
-	if v := disk.ManagedDisk; v != nil {
-		if w := v.DiskEncryptionSet; w != nil {
-			if id := w.ID; id != nil {
-				result["managed_disk_encryption_set_id"] = *id
-			}
-		}
 	}
 
 	flattenAzureRmVirtualMachineReviseDiskInfo(result, diskInfo)
@@ -1733,14 +1503,6 @@ func expandAzureRmVirtualMachineOsProfile(d *schema.ResourceData) (*compute.OSPr
 		profile.CustomData = &v
 	}
 
-	if v, ok := d.GetOk("allow_extension_operations"); ok {
-		profile.AllowExtensionOperations = utils.Bool(v.(bool))
-	}
-
-	if v, ok := d.GetOk("require_guest_provision_signal"); ok {
-		profile.RequireGuestProvisionSignal = utils.Bool(v.(bool))
-	}
-
 	return profile, nil
 }
 
@@ -1791,10 +1553,6 @@ func expandAzureRmVirtualMachineOsProfileLinuxConfig(d *schema.ResourceData) (*c
 
 	config := &compute.LinuxConfiguration{
 		DisablePasswordAuthentication: &disablePasswordAuth,
-	}
-
-	if v, ok := d.GetOk("provision_vm_agent"); ok {
-		config.ProvisionVMAgent = utils.Bool(v.(bool))
 	}
 
 	linuxKeys := linuxConfig["ssh_keys"].([]interface{})
@@ -1897,9 +1655,9 @@ func expandAzureRmVirtualMachineOsProfileWindowsConfig(d *schema.ResourceData) (
 
 func expandAzureRmVirtualMachineDataDisk(d *schema.ResourceData) ([]compute.DataDisk, error) {
 	disks := d.Get("storage_data_disk").([]interface{})
-	dataDisks := make([]compute.DataDisk, 0, len(disks))
-	for _, diskConfig := range disks {
-		config := diskConfig.(map[string]interface{})
+	data_disks := make([]compute.DataDisk, 0, len(disks))
+	for _, disk_config := range disks {
+		config := disk_config.(map[string]interface{})
 
 		name := config["name"].(string)
 		createOption := config["create_option"].(string)
@@ -1907,16 +1665,15 @@ func expandAzureRmVirtualMachineDataDisk(d *schema.ResourceData) ([]compute.Data
 		managedDiskType := config["managed_disk_type"].(string)
 		managedDiskID := config["managed_disk_id"].(string)
 		lun := int32(config["lun"].(int))
-		encryptionSetId := config["managed_disk_encryption_set_id"].(string)
 
-		dataDisk := compute.DataDisk{
+		data_disk := compute.DataDisk{
 			Name:         &name,
 			Lun:          &lun,
 			CreateOption: compute.DiskCreateOptionTypes(createOption),
 		}
 
 		if vhdURI != "" {
-			dataDisk.Vhd = &compute.VirtualHardDisk{
+			data_disk.Vhd = &compute.VirtualHardDisk{
 				URI: &vhdURI,
 			}
 		}
@@ -1925,18 +1682,12 @@ func expandAzureRmVirtualMachineDataDisk(d *schema.ResourceData) ([]compute.Data
 
 		if managedDiskType != "" {
 			managedDisk.StorageAccountType = compute.StorageAccountTypes(managedDiskType)
-			dataDisk.ManagedDisk = managedDisk
+			data_disk.ManagedDisk = managedDisk
 		}
 
 		if managedDiskID != "" {
 			managedDisk.ID = &managedDiskID
-			dataDisk.ManagedDisk = managedDisk
-		}
-
-		if encryptionSetId != "" {
-			managedDisk.DiskEncryptionSet = &compute.DiskEncryptionSetParameters{
-				ID: utils.String(encryptionSetId),
-			}
+			data_disk.ManagedDisk = managedDisk
 		}
 
 		if vhdURI != "" && managedDiskID != "" {
@@ -1945,26 +1696,26 @@ func expandAzureRmVirtualMachineDataDisk(d *schema.ResourceData) ([]compute.Data
 		if vhdURI != "" && managedDiskType != "" {
 			return nil, fmt.Errorf("[ERROR] Conflict between `vhd_uri` and `managed_disk_type` (only one or the other can be used)")
 		}
-		if managedDiskID == "" && vhdURI == "" && strings.EqualFold(string(dataDisk.CreateOption), string(compute.Attach)) {
+		if managedDiskID == "" && vhdURI == "" && strings.EqualFold(string(data_disk.CreateOption), string(compute.Attach)) {
 			return nil, fmt.Errorf("[ERROR] Must specify `vhd_uri` or `managed_disk_id` to attach")
 		}
 
 		if v := config["caching"].(string); v != "" {
-			dataDisk.Caching = compute.CachingTypes(v)
+			data_disk.Caching = compute.CachingTypes(v)
 		}
 
 		if v, ok := config["disk_size_gb"].(int); ok {
-			dataDisk.DiskSizeGB = utils.Int32(int32(v))
+			data_disk.DiskSizeGB = utils.Int32(int32(v))
 		}
 
 		if v, ok := config["write_accelerator_enabled"].(bool); ok {
-			dataDisk.WriteAcceleratorEnabled = utils.Bool(v)
+			data_disk.WriteAcceleratorEnabled = utils.Bool(v)
 		}
 
-		dataDisks = append(dataDisks, dataDisk)
+		data_disks = append(data_disks, data_disk)
 	}
 
-	return dataDisks, nil
+	return data_disks, nil
 }
 
 func expandAzureRmVirtualMachineDiagnosticsProfile(d *schema.ResourceData) *compute.DiagnosticsProfile {
@@ -2124,14 +1875,6 @@ func expandAzureRmVirtualMachineOsDisk(d *schema.ResourceData) (*compute.OSDisk,
 
 	if v, ok := config["write_accelerator_enabled"].(bool); ok {
 		osDisk.WriteAcceleratorEnabled = utils.Bool(v)
-	}
-
-	if managedDiskEncryptionSetId, ok := config["managed_disk_encryption_set_id"]; ok {
-		if id := managedDiskEncryptionSetId.(string); id != "" {
-			osDisk.ManagedDisk.DiskEncryptionSet = &compute.DiskEncryptionSetParameters{
-				ID: utils.String(managedDiskEncryptionSetId.(string)),
-			}
-		}
 	}
 
 	return osDisk, nil
