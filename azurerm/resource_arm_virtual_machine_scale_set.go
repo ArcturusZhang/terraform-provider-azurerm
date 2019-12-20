@@ -512,11 +512,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 													Type:     schema.TypeString,
 													Required: true,
 												},
-												"public_ip_prefix_id": {
-													Type:         schema.TypeString,
-													Optional:     true,
-													ValidateFunc: azure.ValidateResourceID,
-												},
 											},
 										},
 									},
@@ -581,7 +576,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 								string(compute.StorageAccountTypesPremiumLRS),
 								string(compute.StorageAccountTypesStandardLRS),
 								string(compute.StorageAccountTypesStandardSSDLRS),
-								string(compute.StorageAccountTypesUltraSSDLRS),
 							}, true),
 						},
 
@@ -599,11 +593,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 						"create_option": {
 							Type:     schema.TypeString,
 							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.DiskCreateOptionTypesFromImage),
-								string(compute.DiskCreateOptionTypesEmpty),
-								string(compute.DiskCreateOptionTypesAttach),
-							}, false),
 						},
 
 						"managed_disk_encryption_set_id": {
@@ -629,11 +618,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 						"create_option": {
 							Type:     schema.TypeString,
 							Required: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(compute.DiskCreateOptionTypesFromImage),
-								string(compute.DiskCreateOptionTypesEmpty),
-								string(compute.DiskCreateOptionTypesAttach),
-							}, false),
 						},
 
 						"caching": {
@@ -657,7 +641,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 								string(compute.StorageAccountTypesPremiumLRS),
 								string(compute.StorageAccountTypesStandardLRS),
 								string(compute.StorageAccountTypesStandardSSDLRS),
-								string(compute.StorageAccountTypesUltraSSDLRS),
 							}, true),
 						},
 
@@ -804,12 +787,6 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 				DiffSuppressFunc: suppress.CaseDifference,
 			},
 
-			"ultra_ssd_enabled": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
-
 			"tags": tags.Schema(),
 		},
 
@@ -938,12 +915,6 @@ func resourceArmVirtualMachineScaleSetCreateUpdate(d *schema.ResourceData, meta 
 		Zones:                            zones,
 	}
 
-	if v, ok := d.GetOk("ultra_ssd_enabled"); ok {
-		properties.AdditionalCapabilities = &compute.AdditionalCapabilities{
-			UltraSSDEnabled: utils.Bool(v.(bool)),
-		}
-	}
-
 	if _, ok := d.GetOk("identity"); ok {
 		properties.Identity = expandAzureRmVirtualMachineScaleSetIdentity(d)
 	}
@@ -1022,9 +993,6 @@ func resourceArmVirtualMachineScaleSetRead(d *schema.ResourceData, meta interfac
 	}
 
 	if properties := resp.VirtualMachineScaleSetProperties; properties != nil {
-		if properties.AdditionalCapabilities != nil && properties.AdditionalCapabilities.UltraSSDEnabled != nil {
-			d.Set("ultra_ssd_enabled", *properties.AdditionalCapabilities.UltraSSDEnabled)
-		}
 
 		if upgradePolicy := properties.UpgradePolicy; upgradePolicy != nil {
 			d.Set("upgrade_policy_mode", upgradePolicy.Mode)
@@ -1427,11 +1395,6 @@ func flattenAzureRmVirtualMachineScaleSetNetworkProfile(profile *compute.Virtual
 							if timeout := publicIpProperties.IdleTimeoutInMinutes; timeout != nil {
 								publicIpConfig["idle_timeout"] = *timeout
 							}
-							if prefix := publicIpProperties.PublicIPPrefix; prefix != nil {
-								if id := prefix.ID; id != nil {
-									publicIpConfig["public_ip_prefix_id"] = *id
-								}
-							}
 							publicIpConfigs = append(publicIpConfigs, publicIpConfig)
 						}
 						config["public_ip_address_configuration"] = publicIpConfigs
@@ -1605,20 +1568,6 @@ func flattenAzureRmVirtualMachineScaleSetExtensionProfile(profile *compute.Virtu
 	return result, nil
 }
 
-func flattenArmVirtualMachineScaleSetVirtualMachineScaleSetScaleInRules(input *[]compute.VirtualMachineScaleSetScaleInRules) []interface{} {
-	results := make([]interface{}, 0)
-	if input == nil {
-		return results
-	}
-
-	for _, item := range *input {
-		result := string(item)
-		results = append(results, result)
-	}
-
-	return results
-}
-
 func resourceArmVirtualMachineScaleSetStorageProfileImageReferenceHash(v interface{}) int {
 	var buf bytes.Buffer
 
@@ -1713,9 +1662,6 @@ func resourceArmVirtualMachineScaleSetNetworkConfigurationHash(v interface{}) in
 						}
 						if dnsLabel, ok := publicip["domain_name_label"]; ok {
 							buf.WriteString(fmt.Sprintf("%s-", dnsLabel.(string)))
-						}
-						if prefixId, ok := publicip["public_ip_prefix_id"]; ok {
-							buf.WriteString(fmt.Sprintf("%s-", prefixId.(string)))
 						}
 					}
 				}
@@ -1941,10 +1887,6 @@ func expandAzureRmVirtualMachineScaleSetNetworkProfile(d *schema.ResourceData) *
 					config := compute.VirtualMachineScaleSetPublicIPAddressConfiguration{
 						Name: &publicIPConfigName,
 						VirtualMachineScaleSetPublicIPAddressConfigurationProperties: &prop,
-					}
-
-					if v, ok := publicIpConfig["public_ip_prefix_id"]; ok {
-						prop.PublicIPPrefix.ID = utils.String(v.(string))
 					}
 
 					ipConfiguration.PublicIPAddressConfiguration = &config
