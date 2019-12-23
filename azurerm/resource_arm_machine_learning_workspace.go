@@ -84,6 +84,16 @@ func resourceArmAmlWorkspace() *schema.Resource {
 				Optional: true,
 			},
 
+			"sku_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"Basic",
+					"Enterprise",
+				}, true),
+				Default: "Basic",
+			},
+
 			"tags": tags.Schema(),
 
 			"identity": {
@@ -131,6 +141,7 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 	containerRegistry := d.Get("container_registry_id").(string)
 	applicationInsights := d.Get("application_insights_id").(string)
 	discoveryUrl := d.Get("discovery_url").(string)
+	skuName := d.Get("sku_name").(string)
 	t := d.Get("tags").(map[string]interface{})
 
 	existing, err := client.Get(ctx, resGroup, name)
@@ -144,7 +155,7 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 		}
 	}
 
-	// TODO -- should validate container registry enable_admin is enabled.
+	// TODO -- should validate container registry admin_enabled is enabled.
 	workspace := machinelearningservices.Workspace{
 		Name:     &name,
 		Location: &location,
@@ -159,6 +170,7 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 			KeyVault:            &keyVault,
 		},
 		Identity: expandAmlIdentity(d),
+		Sku:      &machinelearningservices.Sku{Name: utils.String(skuName)},
 	}
 
 	result, err := client.CreateOrUpdate(ctx, resGroup, name, workspace)
