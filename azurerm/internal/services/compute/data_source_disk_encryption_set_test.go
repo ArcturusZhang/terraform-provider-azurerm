@@ -1,4 +1,4 @@
-package azurerm
+package compute
 
 import (
 	"fmt"
@@ -29,9 +29,7 @@ func TestAccDataSourceAzureRMDiskEncryptionSet_basic(t *testing.T) {
 			{
 				Config:  testAccPrepareKeyvaultAndKey(resourceGroup, location, vaultName, keyName),
 				Destroy: false,
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMKeyVaultExists("azurerm_key_vault.test"),
-				),
+				Check:   resource.ComposeTestCheckFunc(),
 			},
 			// This step is not negligible, without this step, the final step will fail on refresh complaining `Disk Encryption Set does not exist`
 			{

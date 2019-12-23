@@ -1,4 +1,4 @@
-package azurerm
+package compute
 
 import (
 	"fmt"
@@ -35,9 +35,7 @@ func TestAccAzureRMDiskEncryptionSet_basic(t *testing.T) {
 			{
 				Config:  testAccPrepareKeyvaultAndKey(resourceGroup, location, vaultName, keyName),
 				Destroy: false,
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMKeyVaultExists("azurerm_key_vault.test"),
-				),
+				Check:   resource.ComposeTestCheckFunc(),
 			},
 			{
 				PreConfig: func() { enableSoftDeleteAndPurgeProtectionForKeyvault(resourceGroup, vaultName) },
