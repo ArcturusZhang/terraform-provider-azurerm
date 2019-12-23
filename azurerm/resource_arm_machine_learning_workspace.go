@@ -54,24 +54,28 @@ func resourceArmAmlWorkspace() *schema.Resource {
 			"key_vault_id": {
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				ValidateFunc: azure.ValidateResourceID,
 			},
 
 			"application_insights_id": {
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				ValidateFunc: azure.ValidateResourceID,
 			},
 
 			"container_registry_id": {
 				Type:         schema.TypeString,
 				Optional:     true,
+				ForceNew:     true,
 				ValidateFunc: azure.ValidateResourceID,
 			},
 
 			"storage_account_id": {
 				Type:         schema.TypeString,
 				Required:     true,
+				ForceNew:     true,
 				ValidateFunc: azure.ValidateResourceID,
 			},
 
@@ -224,7 +228,8 @@ func resourceArmAmlWorkspaceRead(d *schema.ResourceData, meta interface{}) error
 
 func resourceArmAmlWorkspaceDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).MachineLearning.WorkspacesClient
-	ctx := meta.(*clients.Client).StopContext
+	ctx, cancel := timeouts.ForDelete(meta.(*clients.Client).StopContext, d)
+	defer cancel()
 
 	id, err := azure.ParseAzureResourceID(d.Id())
 	if err != nil {
