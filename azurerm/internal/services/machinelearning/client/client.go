@@ -1,4 +1,4 @@
-package machinelearning
+package client
 
 import (
 	"github.com/Azure/azure-sdk-for-go/services/machinelearningservices/mgmt/2019-11-01/machinelearningservices"
@@ -12,7 +12,7 @@ type Client struct {
 	UsagesClient                 *machinelearningservices.UsagesClient
 }
 
-func BuildClient(o *common.ClientOptions) *Client {
+func NewClient(o *common.ClientOptions) *Client {
 
 	WorkspacesClient := machinelearningservices.NewWorkspacesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&WorkspacesClient.Client, o.ResourceManagerAuthorizer)

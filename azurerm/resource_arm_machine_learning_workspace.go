@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
-	"reflect"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/machinelearningservices/mgmt/2019-11-01/machinelearningservices"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -21,6 +23,13 @@ func resourceArmAmlWorkspace() *schema.Resource {
 		Update: resourceArmAmlWorkspaceCreateUpdate,
 		Delete: resourceArmAmlWorkspaceDelete,
 
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(30 * time.Minute),
+			Read:   schema.DefaultTimeout(5 * time.Minute),
+			Update: schema.DefaultTimeout(30 * time.Minute),
+			Delete: schema.DefaultTimeout(30 * time.Minute),
+		},
+
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
@@ -34,37 +43,41 @@ func resourceArmAmlWorkspace() *schema.Resource {
 
 			"description": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 
 			"friendly_name": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 
-			"key_vault": {
-				Type:     schema.TypeString,
-				Required: true,
+			"key_vault_id": {
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: azure.ValidateResourceID,
 			},
 
-			"application_insights": {
-				Type:     schema.TypeString,
-				Required: true,
+			"application_insights_id": {
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: azure.ValidateResourceID,
 			},
 
-			"container_registry": {
-				Type:     schema.TypeString,
-				Required: true,
+			"container_registry_id": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: azure.ValidateResourceID,
 			},
 
-			"storage_account": {
-				Type:     schema.TypeString,
-				Required: true,
+			"storage_account_id": {
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: azure.ValidateResourceID,
 			},
 
 			"discovery_url": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 
 			"tags": tags.Schema(),
@@ -88,14 +101,9 @@ func resourceArmAmlWorkspace() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"identity_ids": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MinItems: 1,
-							Elem: &schema.Schema{
-								Type:         schema.TypeString,
-								ValidateFunc: validation.NoZeroValues,
-							},
+						"tenant_id": {
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},
@@ -105,18 +113,19 @@ func resourceArmAmlWorkspace() *schema.Resource {
 }
 
 func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).MachineLearning.WorkspacesClient
-	ctx := meta.(*ArmClient).StopContext
+	client := meta.(*clients.Client).MachineLearning.WorkspacesClient
+	ctx, cancel := timeouts.ForCreateUpdate(meta.(*clients.Client).StopContext, d)
+	defer cancel()
 
 	name := d.Get("name").(string)
 	resGroup := d.Get("resource_group_name").(string)
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	description := d.Get("description").(string)
 	friendlyName := d.Get("friendly_name").(string)
-	storageAccount := d.Get("storage_account").(string)
-	keyVault := d.Get("key_vault").(string)
-	containerRegistry := d.Get("container_registry").(string)
-	applicationInsights := d.Get("application_insights").(string)
+	storageAccount := d.Get("storage_account_id").(string)
+	keyVault := d.Get("key_vault_id").(string)
+	containerRegistry := d.Get("container_registry_id").(string)
+	applicationInsights := d.Get("application_insights_id").(string)
 	discoveryUrl := d.Get("discovery_url").(string)
 	t := d.Get("tags").(map[string]interface{})
 
@@ -131,6 +140,7 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 		}
 	}
 
+	// TODO -- should validate container registry enable_admin is enabled.
 	workspace := machinelearningservices.Workspace{
 		Name:     &name,
 		Location: &location,
@@ -144,7 +154,7 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 			ApplicationInsights: &applicationInsights,
 			KeyVault:            &keyVault,
 		},
-		Identity: &machinelearningservices.Identity{Type: machinelearningservices.SystemAssigned},
+		Identity: expandAmlIdentity(d),
 	}
 
 	result, err := client.CreateOrUpdate(ctx, resGroup, name, workspace)
@@ -169,8 +179,9 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 }
 
 func resourceArmAmlWorkspaceRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).MachineLearning.WorkspacesClient
-	ctx := meta.(*ArmClient).StopContext
+	client := meta.(*clients.Client).MachineLearning.WorkspacesClient
+	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
+	defer cancel()
 
 	id, err := azure.ParseAzureResourceID(d.Id())
 	if err != nil {
@@ -198,11 +209,11 @@ func resourceArmAmlWorkspaceRead(d *schema.ResourceData, meta interface{}) error
 	if props := resp.WorkspaceProperties; props != nil {
 		d.Set("description", props.Description)
 		d.Set("friendly_name", props.FriendlyName)
-		d.Set("storage_account", props.StorageAccount)
+		d.Set("storage_account_id", props.StorageAccount)
 		d.Set("discovery_url", props.DiscoveryURL)
-		d.Set("container_registry", props.ContainerRegistry)
-		d.Set("application_insights", props.ApplicationInsights)
-		d.Set("key_vault", props.KeyVault)
+		d.Set("container_registry_id", props.ContainerRegistry)
+		d.Set("application_insights_id", props.ApplicationInsights)
+		d.Set("key_vault_id", props.KeyVault)
 	}
 	if err := d.Set("identity", flattenAmlIdentity(resp.Identity)); err != nil {
 		return fmt.Errorf("Error flattening identity on Workspace %q (Resource Group %q): %+v", name, resGroup, err)
@@ -212,8 +223,8 @@ func resourceArmAmlWorkspaceRead(d *schema.ResourceData, meta interface{}) error
 }
 
 func resourceArmAmlWorkspaceDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).MachineLearning.WorkspacesClient
-	ctx := meta.(*ArmClient).StopContext
+	client := meta.(*clients.Client).MachineLearning.WorkspacesClient
+	ctx := meta.(*clients.Client).StopContext
 
 	id, err := azure.ParseAzureResourceID(d.Id())
 	if err != nil {
@@ -248,6 +259,10 @@ func flattenAmlIdentity(identity *machinelearningservices.Identity) interface{} 
 
 func expandAmlIdentity(d *schema.ResourceData) *machinelearningservices.Identity {
 	v := d.Get("identity")
+	// Rest api will return an error if you did not set the identity field.
+	if v == nil {
+		return &machinelearningservices.Identity{Type: machinelearningservices.SystemAssigned}
+	}
 	identities := v.([]interface{})
 	identity := identities[0].(map[string]interface{})
 	identityType := machinelearningservices.ResourceIdentityType(identity["type"].(string))
