@@ -1,4 +1,4 @@
-package azurerm
+package machinelearning
 
 import (
 	"fmt"
