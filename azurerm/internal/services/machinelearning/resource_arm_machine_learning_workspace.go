@@ -2,17 +2,18 @@ package machinelearning
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
-	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/machinelearningservices/mgmt/2019-11-01/machinelearningservices"
+	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/suppress"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 )
 
@@ -132,22 +133,18 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 	defer cancel()
 
 	name := d.Get("name").(string)
-	resGroup := d.Get("resource_group_name").(string)
+	resourceGroup := d.Get("resource_group_name").(string)
 	location := azure.NormalizeLocation(d.Get("location").(string))
-	description := d.Get("description").(string)
-	friendlyName := d.Get("friendly_name").(string)
 	storageAccount := d.Get("storage_account_id").(string)
 	keyVault := d.Get("key_vault_id").(string)
-	containerRegistry := d.Get("container_registry_id").(string)
 	applicationInsights := d.Get("application_insights_id").(string)
-	discoveryUrl := d.Get("discovery_url").(string)
 	skuName := d.Get("sku_name").(string)
 	t := d.Get("tags").(map[string]interface{})
 
-	existing, err := client.Get(ctx, resGroup, name)
+	existing, err := client.Get(ctx, resourceGroup, name)
 	if err != nil {
 		if !utils.ResponseWasNotFound(existing.Response) {
-			return fmt.Errorf("Error checking for existing AML Workspace %q (Resource Group %q): %s", name, resGroup, err)
+			return fmt.Errorf("Error checking for existing AML Workspace %q (Resource Group %q): %s", name, resourceGroup, err)
 		}
 
 		if existing.ID != nil && *existing.ID != "" {
@@ -155,17 +152,13 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 		}
 	}
 
-	// TODO -- should validate container registry admin_enabled is enabled.
+	// TODO -- it turns out that you cannot use premium storage accounts
 	workspace := machinelearningservices.Workspace{
 		Name:     &name,
 		Location: &location,
 		Tags:     tags.Expand(t),
 		WorkspaceProperties: &machinelearningservices.WorkspaceProperties{
-			Description:         &description,
-			FriendlyName:        &friendlyName,
 			StorageAccount:      &storageAccount,
-			DiscoveryURL:        &discoveryUrl,
-			ContainerRegistry:   &containerRegistry,
 			ApplicationInsights: &applicationInsights,
 			KeyVault:            &keyVault,
 		},
@@ -173,25 +166,95 @@ func resourceArmAmlWorkspaceCreateUpdate(d *schema.ResourceData, meta interface{
 		Sku:      &machinelearningservices.Sku{Name: utils.String(skuName)},
 	}
 
-	result, err := client.CreateOrUpdate(ctx, resGroup, name, workspace)
+	if v, ok := d.GetOk("description"); ok {
+		workspace.Description = utils.String(v.(string))
+	}
+
+	if v, ok := d.GetOk("friendly_name"); ok {
+		workspace.FriendlyName = utils.String(v.(string))
+	}
+
+	if v, ok := d.GetOk("discovery_url"); ok {
+		workspace.DiscoveryURL = utils.String(v.(string))
+	}
+
+	if v, ok := d.GetOk("container_registry_id"); ok {
+		workspace.ContainerRegistry = utils.String(v.(string))
+	}
+
+	if err := validateStorageAccount(storageAccount, resourceGroup, d, meta); err != nil {
+		return fmt.Errorf("Error creating Machine Learning Workspace %q (Resource Group %q): %+v", name, resourceGroup, err)
+	}
+
+	if err := validateContainerRegistry(workspace.ContainerRegistry, resourceGroup, d, meta); err != nil {
+		return fmt.Errorf("Error creating Machine Learning Workspace %q (Resource Group %q): %+v", name, resourceGroup, err)
+	}
+
+	result, err := client.CreateOrUpdate(ctx, resourceGroup, name, workspace)
 	if err != nil {
-		return fmt.Errorf("Error during workspace creation %q in resource group (%q): %+v", name, resGroup, err)
+		return fmt.Errorf("Error during workspace creation %q in resource group (%q): %+v", name, resourceGroup, err)
 	}
 
 	fmt.Printf("created AML Workspace %q", result.Name)
 
-	resp, err := client.Get(ctx, resGroup, name)
+	resp, err := client.Get(ctx, resourceGroup, name)
 	if err != nil {
 		return err
 	}
 
 	if resp.ID == nil {
-		return fmt.Errorf("Cannot read workspace %q (resource group %q) ID", name, resGroup)
+		return fmt.Errorf("Cannot read workspace %q (resource group %q) ID", name, resourceGroup)
 	}
 
 	d.SetId(*resp.ID)
 
 	return resourceArmAmlWorkspaceRead(d, meta)
+}
+
+func validateStorageAccount(accountID string, resourceGroup string, d *schema.ResourceData, meta interface{}) error {
+	if accountID == "" {
+		return fmt.Errorf("Error validating Storage Account: Empty ID")
+	}
+	id, err := azure.ParseAzureResourceID(accountID)
+	if err != nil {
+		return fmt.Errorf("Error validating Storage Account: %+v", err)
+	}
+	client := meta.(*clients.Client).Storage.AccountsClient
+	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
+	defer cancel()
+	accountName := id.Path["storageAccounts"]
+	account, err := client.GetProperties(ctx, resourceGroup, accountName, "")
+	if err != nil {
+		return fmt.Errorf("Error validating Storage Account %q (Resource Group %q): %+v", accountName, resourceGroup, err)
+	}
+	if sku := account.Sku; sku != nil {
+		if sku.Tier == storage.Premium {
+			return fmt.Errorf("Error validating Storage Account %q (Resource Group %q): The associated Storage Account must not be Premium", accountName, resourceGroup)
+		}
+	}
+	return nil
+}
+
+func validateContainerRegistry(acrID *string, resourceGroup string, d *schema.ResourceData, meta interface{}) error {
+	if acrID == nil {
+		return nil
+	}
+	id, err := azure.ParseAzureResourceID(*acrID)
+	if err != nil {
+		return fmt.Errorf("Error validating Container Registry: %+v", err)
+	}
+	client := meta.(*clients.Client).Containers.RegistriesClient
+	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
+	defer cancel()
+	acrName := id.Path["registries"]
+	acr, err := client.Get(ctx, resourceGroup, acrName)
+	if err != nil {
+		return fmt.Errorf("Error validating Container Registry %q (Resource Group %q): %+v", acrName, resourceGroup, err)
+	}
+	if acr.AdminUserEnabled == nil || !*acr.AdminUserEnabled {
+		return fmt.Errorf("Error validating Container Registry%q (Resource Group %q): The associated Container Registry must set `admin_enabled` to true", acrName, resourceGroup)
+	}
+	return nil
 }
 
 func resourceArmAmlWorkspaceRead(d *schema.ResourceData, meta interface{}) error {
@@ -259,7 +322,7 @@ func resourceArmAmlWorkspaceDelete(d *schema.ResourceData, meta interface{}) err
 	return nil
 }
 
-func flattenAmlIdentity(identity *machinelearningservices.Identity) interface{} {
+func flattenAmlIdentity(identity *machinelearningservices.Identity) []interface{} {
 	if identity == nil {
 		return nil
 	}
@@ -271,17 +334,16 @@ func flattenAmlIdentity(identity *machinelearningservices.Identity) interface{} 
 	if identity.TenantID != nil {
 		result["tenant_id"] = *identity.TenantID
 	}
-	return result
+	return []interface{}{result}
 }
 
 func expandAmlIdentity(d *schema.ResourceData) *machinelearningservices.Identity {
-	v := d.Get("identity")
-	// Rest api will return an error if you did not set the identity field.
-	if v == nil {
+	v := d.Get("identity").([]interface{})
+	// Rest api will return an error if you did not set the identity field, if not set return default
+	if len(v) == 0 {
 		return &machinelearningservices.Identity{Type: machinelearningservices.SystemAssigned}
 	}
-	identities := v.([]interface{})
-	identity := identities[0].(map[string]interface{})
+	identity := v[0].(map[string]interface{})
 	identityType := machinelearningservices.ResourceIdentityType(identity["type"].(string))
 
 	amlIdentity := machinelearningservices.Identity{
