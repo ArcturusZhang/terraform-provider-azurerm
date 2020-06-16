@@ -154,6 +154,12 @@ func resourceWindowsVirtualMachine() *schema.Resource {
 				Default:  true,
 			},
 
+			"encryption_at_host_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+
 			"eviction_policy": {
 				// only applicable when `priority` is set to `Spot`
 				Type:     schema.TypeString,
@@ -408,6 +414,9 @@ func resourceWindowsVirtualMachineCreate(d *schema.ResourceData, meta interface{
 			// Optional
 			AdditionalCapabilities: additionalCapabilities,
 			DiagnosticsProfile:     bootDiagnostics,
+			SecurityProfile: &compute.SecurityProfile{
+				EncryptionAtHost: utils.Bool(d.Get("encryption_at_host_enabled").(bool)),
+			},
 		},
 		Tags: tags.Expand(t),
 	}
@@ -579,6 +588,12 @@ func resourceWindowsVirtualMachineRead(d *schema.ResourceData, meta interface{})
 			return fmt.Errorf("setting `network_interface_ids`: %+v", err)
 		}
 	}
+
+	encryptionAtHostEnabled := false
+	if props.SecurityProfile != nil && props.SecurityProfile.EncryptionAtHost != nil {
+		encryptionAtHostEnabled = *props.SecurityProfile.EncryptionAtHost
+	}
+	d.Set("encryption_at_host_enabled", encryptionAtHostEnabled)
 
 	dedicatedHostId := ""
 	if props.Host != nil && props.Host.ID != nil {
@@ -840,6 +855,14 @@ func resourceWindowsVirtualMachineUpdate(d *schema.ResourceData, meta interface{
 
 		update.VirtualMachineProperties.HardwareProfile = &compute.HardwareProfile{
 			VMSize: compute.VirtualMachineSizeTypes(vmSize),
+		}
+	}
+
+	if d.HasChange("encryption_at_host_enabled") {
+		shouldUpdate = true
+
+		update.VirtualMachineProperties.SecurityProfile = &compute.SecurityProfile{
+			EncryptionAtHost: utils.Bool(d.Get("encryption_at_host_enabled").(bool)),
 		}
 	}
 
