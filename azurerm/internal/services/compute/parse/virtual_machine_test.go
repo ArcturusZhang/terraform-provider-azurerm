@@ -29,12 +29,12 @@ func TestVirtualMachineID(t *testing.T) {
 			Expected: nil,
 		},
 		{
-			Name:     "Missing Stores Value",
+			Name:     "Missing virtualMachines Value",
 			Input:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resGroup1/providers/Microsoft.Compute/virtualMachines/",
 			Expected: nil,
 		},
 		{
-			Name:  "App Configuration ID",
+			Name:  "Virtual Machine ID",
 			Input: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resGroup1/providers/Microsoft.Compute/virtualMachines/vm1",
 			Expected: &VirtualMachineId{
 				Name:          "vm1",
