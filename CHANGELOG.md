@@ -3,16 +3,24 @@
 DEPENDENCIES
 
 * updating to `v43.1.0` of `github.com/Azure/azure-sdk-for-go` [GH-7188]
+* upgrading `kusto` to`2020-02-15` [GH-6838]
 
 FEATURES
 
+* **New Resource:** `azurerm_data_factory_integration_runtime_self_hosted` [GH-6535]
+* **New Resource:** `azurerm_eventhub_cluster` [GH-7306]
 * `azurerm_api_management` - support for the `developer_portal_url` property [GH-7263]
+* `azurerm_app_service_certificate `- support for the `hosting_environment_profile_id` propety [GH-7087]
+* `azurerm_app_service_environment` - support for the `user_whitelisted_ip_ranges` property [GH-7324]
+* `azurerm_policy_assignment` - added support for `enforcement_mode`  [GH-7331]
 
 BUG FIXES:
 
 * `azurerm_api_management_api` - correctly wait for future on create/update [GH-7273]
 * `azurerm_bot_connection` - adding a runtime check for the available service providers in the Azure Region being used [GH-7279]
 * `azurerm_healthcare_service` - the `access_policy_object_ids` property is now optional [GH-7296]
+* `azurerm_hdinsight_cluster` - deprecating the `min_instance_count` property [GH-7272]
+* `azurerm_network_watcher_flow_log` - propertly disable the flowlog on destroy [GH-7154]
 
 ## 2.14.0 (June 11, 2020)
 
