@@ -409,6 +409,17 @@ func resourceArmContainerGroup() *schema.Resource {
 				},
 			},
 
+			"init_container": {
+				Type: schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+
+					},
+				},
+			},
+
 			"ip_address": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -468,6 +479,7 @@ func resourceArmContainerGroupCreate(d *schema.ResourceData, meta interface{}) e
 			OsType:                   containerinstance.OperatingSystemTypes(OSType),
 			Volumes:                  containerGroupVolumes,
 			ImageRegistryCredentials: expandContainerImageRegistryCredentials(d),
+			InitContainers: expandContainerGroupInitContainers(d.Get("init_container").([]interface{})),
 		},
 	}
 
@@ -547,6 +559,10 @@ func resourceArmContainerGroupRead(d *schema.ResourceData, meta interface{}) err
 		containerConfigs := flattenContainerGroupContainers(d, resp.Containers, props.Volumes)
 		if err := d.Set("container", containerConfigs); err != nil {
 			return fmt.Errorf("Error setting `container`: %+v", err)
+		}
+
+		if err := d.Set("init_container", flattenContainerGroupInitContainers(resp.InitContainers)); err != nil {
+			return fmt.Errorf("Error setting `init_container`: %+v", err)
 		}
 
 		if err := d.Set("image_registry_credential", flattenContainerImageRegistryCredentials(d, props.ImageRegistryCredentials)); err != nil {
@@ -1373,4 +1389,12 @@ func resourceArmContainerGroupPortsHash(v interface{}) int {
 	}
 
 	return hashcode.String(buf.String())
+}
+
+func expandContainerGroupInitContainers(input []interface{}) *[]containerinstance.InitContainerDefinition {
+
+}
+
+func flattenContainerGroupInitContainers(input *[]containerinstance.InitContainerDefinition) {
+	
 }
