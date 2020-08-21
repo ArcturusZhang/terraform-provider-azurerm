@@ -1396,5 +1396,5 @@ func expandContainerGroupInitContainers(input []interface{}) *[]containerinstanc
 }
 
 func flattenContainerGroupInitContainers(input *[]containerinstance.InitContainerDefinition) {
-	
+
 }
