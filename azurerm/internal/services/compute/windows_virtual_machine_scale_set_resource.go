@@ -116,6 +116,13 @@ func resourceArmWindowsVirtualMachineScaleSet() *schema.Resource {
 
 			"data_disk": VirtualMachineScaleSetDataDiskSchema(),
 
+			"dedicated_host_group_id": {
+				Type: schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				ValidateFunc: computeValidate.DedicatedHostGroupID,
+			},
+
 			"do_not_run_extensions_on_overprovisioned_machines": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -517,6 +524,12 @@ func resourceArmWindowsVirtualMachineScaleSetCreate(d *schema.ResourceData, meta
 		Zones: zones,
 	}
 
+	if v, ok := d.GetOk("dedicated_host_group_id"); ok {
+		props.VirtualMachineScaleSetProperties.HostGroup = &compute.SubResource{
+			ID: utils.String(v.(string)),
+		}
+	}
+
 	if v, ok := d.GetOk("platform_fault_domain_count"); ok {
 		props.VirtualMachineScaleSetProperties.PlatformFaultDomainCount = utils.Int32(int32(v.(int)))
 	}
@@ -904,6 +917,11 @@ func resourceArmWindowsVirtualMachineScaleSetRead(d *schema.ResourceData, meta i
 		return fmt.Errorf("Error setting `automatic_instance_repair`: %+v", err)
 	}
 
+	hostGroupID := ""
+	if props.HostGroup != nil && props.HostGroup.ID != nil {
+		hostGroupID = *props.HostGroup.ID
+	}
+	d.Set("dedicated_host_group_id", hostGroupID)
 	d.Set("do_not_run_extensions_on_overprovisioned_machines", props.DoNotRunExtensionsOnOverprovisionedVMs)
 	d.Set("overprovision", props.Overprovision)
 	d.Set("platform_fault_domain_count", props.PlatformFaultDomainCount)

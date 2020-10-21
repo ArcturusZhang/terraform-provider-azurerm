@@ -114,6 +114,13 @@ func resourceArmLinuxVirtualMachineScaleSet() *schema.Resource {
 
 			"data_disk": VirtualMachineScaleSetDataDiskSchema(),
 
+			"dedicated_host_group_id": {
+				Type: schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				ValidateFunc: validate.DedicatedHostGroupID,
+			},
+
 			"disable_password_authentication": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -488,6 +495,12 @@ func resourceArmLinuxVirtualMachineScaleSetCreate(d *schema.ResourceData, meta i
 			},
 		},
 		Zones: zones,
+	}
+
+	if v, ok := d.GetOk("dedicated_host_group_id"); ok {
+		props.VirtualMachineScaleSetProperties.HostGroup = &compute.SubResource{
+			ID: utils.String(v.(string)),
+		}
 	}
 
 	if v, ok := d.GetOk("platform_fault_domain_count"); ok {
@@ -874,6 +887,11 @@ func resourceArmLinuxVirtualMachineScaleSetRead(d *schema.ResourceData, meta int
 		return fmt.Errorf("Error setting `automatic_instance_repair`: %+v", err)
 	}
 
+	hostGroupID := ""
+	if props.HostGroup != nil && props.HostGroup.ID != nil {
+		hostGroupID = *props.HostGroup.ID
+	}
+	d.Set("dedicated_host_group_id", hostGroupID)
 	d.Set("do_not_run_extensions_on_overprovisioned_machines", props.DoNotRunExtensionsOnOverprovisionedVMs)
 	d.Set("overprovision", props.Overprovision)
 	proximityPlacementGroupId := ""
