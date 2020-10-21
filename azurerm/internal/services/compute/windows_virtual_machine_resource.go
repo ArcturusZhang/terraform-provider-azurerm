@@ -150,7 +150,6 @@ func resourceWindowsVirtualMachine() *schema.Resource {
 			"enable_automatic_updates": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				ForceNew: true, // TODO: confirm
 				Default:  true,
 			},
 
@@ -771,6 +770,20 @@ func resourceWindowsVirtualMachineUpdate(d *schema.ResourceData, meta interface{
 		}
 
 		update.OsProfile.AllowExtensionOperations = utils.Bool(allowExtensionOperations)
+	}
+
+	if d.HasChange("enable_automatic_updates") {
+		shouldUpdate = true
+
+		if update.OsProfile == nil {
+			update.OsProfile = &compute.OSProfile{}
+		}
+
+		if update.OsProfile.WindowsConfiguration == nil {
+			update.OsProfile.WindowsConfiguration = &compute.WindowsConfiguration{}
+		}
+
+		update.OsProfile.WindowsConfiguration.EnableAutomaticUpdates = utils.Bool(d.Get("enable_automatic_updates").(bool))
 	}
 
 	if d.HasChange("identity") {

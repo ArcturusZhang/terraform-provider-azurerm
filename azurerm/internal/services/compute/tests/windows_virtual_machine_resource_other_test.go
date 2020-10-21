@@ -304,6 +304,48 @@ func TestAccWindowsVirtualMachine_otherEnableAutomaticUpdatesDisabled(t *testing
 	})
 }
 
+func TestAccWindowsVirtualMachine_otherEnableAutomaticUpdatesUpdate(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_windows_virtual_machine", "test")
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { acceptance.PreCheck(t) },
+		Providers:    acceptance.SupportedProviders,
+		CheckDestroy: checkWindowsVirtualMachineIsDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: testWindowsVirtualMachine_otherEnableAutomaticUpdatesDefault(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkWindowsVirtualMachineExists(data.ResourceName),
+					resource.TestCheckResourceAttr(data.ResourceName, "enable_automatic_updates", "true"),
+				),
+			},
+			data.ImportStep(
+				"admin_password",
+			),
+			{
+				Config: testWindowsVirtualMachine_otherEnableAutomaticUpdatesDisabled(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkWindowsVirtualMachineExists(data.ResourceName),
+					resource.TestCheckResourceAttr(data.ResourceName, "enable_automatic_updates", "false"),
+				),
+			},
+			data.ImportStep(
+				"admin_password",
+			),
+			{
+				Config: testWindowsVirtualMachine_otherEnableAutomaticUpdatesDefault(data),
+				Check: resource.ComposeTestCheckFunc(
+					checkWindowsVirtualMachineExists(data.ResourceName),
+					resource.TestCheckResourceAttr(data.ResourceName, "enable_automatic_updates", "true"),
+				),
+			},
+			data.ImportStep(
+				"admin_password",
+			),
+		},
+	})
+}
+
 func TestAccWindowsVirtualMachine_otherLicenseTypeNone(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_windows_virtual_machine", "test")
 
