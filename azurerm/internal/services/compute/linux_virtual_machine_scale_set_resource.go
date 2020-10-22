@@ -11,6 +11,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/suppress"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
+	azValidate "github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/features"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/compute/parse"
@@ -143,6 +144,13 @@ func resourceArmLinuxVirtualMachineScaleSet() *schema.Resource {
 			},
 
 			"extension": VirtualMachineScaleSetExtensionsSchema(),
+
+			"extensions_time_budget": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Default:      "PT1H30M",
+				ValidateFunc: azValidate.ISO8601DurationBetween("PT15M", "PT2H"),
+			},
 
 			"health_probe_id": {
 				Type:         schema.TypeString,
@@ -416,6 +424,13 @@ func resourceArmLinuxVirtualMachineScaleSetCreate(d *schema.ResourceData, meta i
 				return err
 			}
 		}
+	}
+
+	if v, ok := d.GetOk("extensions_time_budget"); ok {
+		if virtualMachineProfile.ExtensionProfile == nil {
+			virtualMachineProfile.ExtensionProfile = &compute.VirtualMachineScaleSetExtensionProfile{}
+		}
+		virtualMachineProfile.ExtensionProfile.ExtensionsTimeBudget = utils.String(v.(string))
 	}
 
 	if adminPassword, ok := d.GetOk("admin_password"); ok {
@@ -793,6 +808,13 @@ func resourceArmLinuxVirtualMachineScaleSetUpdate(d *schema.ResourceData, meta i
 		}
 	}
 
+	if d.HasChange("extensions_time_budget") {
+		if updateProps.VirtualMachineProfile.ExtensionProfile == nil {
+			updateProps.VirtualMachineProfile.ExtensionProfile = &compute.VirtualMachineScaleSetExtensionProfile{}
+		}
+		updateProps.VirtualMachineProfile.ExtensionProfile.ExtensionsTimeBudget = utils.String(d.Get("extensions_time_budget").(string))
+	}
+
 	if d.HasChange("tags") {
 		update.Tags = tags.Expand(d.Get("tags").(map[string]interface{}))
 	}
@@ -979,6 +1001,12 @@ func resourceArmLinuxVirtualMachineScaleSetRead(d *schema.ResourceData, meta int
 			}
 			d.Set("extension", extensionProfile)
 		}
+
+		extensionsTimeBudget := "PT1H30M"
+		if profile.ExtensionProfile != nil && profile.ExtensionProfile.ExtensionsTimeBudget != nil {
+			extensionsTimeBudget = *profile.ExtensionProfile.ExtensionsTimeBudget
+		}
+		d.Set("extensions_time_budget", extensionsTimeBudget)
 
 		encryptionAtHostEnabled := false
 		if profile.SecurityProfile != nil && profile.SecurityProfile.EncryptionAtHost != nil {
