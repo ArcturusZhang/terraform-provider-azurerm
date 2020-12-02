@@ -69,6 +69,10 @@ func schemaFeatures(supportLegacyTestSuite bool) *schema.Schema {
 						Type:     schema.TypeBool,
 						Optional: true,
 					},
+					"force_deletion": {
+						Type: schema.TypeBool,
+						Optional: true,
+					},
 				},
 			},
 		},
@@ -128,6 +132,7 @@ func expandFeatures(input []interface{}) features.UserFeatures {
 		VirtualMachine: features.VirtualMachineFeatures{
 			DeleteOSDiskOnDeletion: true,
 			GracefulShutdown:       false,
+			ForceDeletion: false,
 		},
 		VirtualMachineScaleSet: features.VirtualMachineScaleSetFeatures{
 			RollInstancesWhenRequired: true,
@@ -182,6 +187,9 @@ func expandFeatures(input []interface{}) features.UserFeatures {
 			}
 			if v, ok := virtualMachinesRaw["graceful_shutdown"]; ok {
 				features.VirtualMachine.GracefulShutdown = v.(bool)
+			}
+			if v, ok := virtualMachinesRaw["force_deletion"]; ok {
+				features.VirtualMachine.ForceDeletion = v.(bool)
 			}
 		}
 	}
