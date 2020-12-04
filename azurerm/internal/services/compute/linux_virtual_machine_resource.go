@@ -1100,7 +1100,8 @@ func resourceLinuxVirtualMachineDelete(d *schema.ResourceData, meta interface{})
 	log.Printf("[DEBUG] Powered Off Linux Virtual Machine %q (Resource Group %q).", id.Name, id.ResourceGroup)
 
 	log.Printf("[DEBUG] Deleting Linux Virtual Machine %q (Resource Group %q)..", id.Name, id.ResourceGroup)
-	deleteFuture, err := client.Delete(ctx, id.ResourceGroup, id.Name, utils.Bool(false))
+	forceDeletion := meta.(*clients.Client).Features.VirtualMachine.ForceDeletion
+	deleteFuture, err := client.Delete(ctx, id.ResourceGroup, id.Name, utils.Bool(forceDeletion))
 	if err != nil {
 		return fmt.Errorf("deleting Linux Virtual Machine %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
