@@ -1,198 +1,169 @@
 package hybridcompute_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance/check"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/hybridcompute/parse"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 )
 
-func TestAccAzureRMhybridcomputeMachine_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAzureRMhybridcomputeMachine_basic(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
+type HybridComputeMachineResource struct{}
+
+func TestAccHybridComputeMachine_basic(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_hybrid_compute_machine", "test")
+	r := HybridComputeMachineResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.ImportStep(),
 	})
 }
 
-func TestAccAzureRMhybridcomputeMachine_requiresImport(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAzureRMhybridcomputeMachine_basic(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.RequiresImportErrorStep(testAccAzureRMhybridcomputeMachine_requiresImport),
+func TestAccHybridComputeMachine_requiresImport(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_hybrid_compute_machine", "test")
+	r := HybridComputeMachineResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.RequiresImportErrorStep(r.requiresImport),
 	})
 }
 
-func TestAccAzureRMhybridcomputeMachine_complete(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAzureRMhybridcomputeMachine_complete(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
+func TestAccHybridComputeMachine_complete(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_hybrid_compute_machine", "test")
+	r := HybridComputeMachineResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.ImportStep(),
 	})
 }
 
 func TestAccAzureRMhybridcomputeMachine_update(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAzureRMhybridcomputeMachine_basic(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
-			{
-				Config: testAccAzureRMhybridcomputeMachine_complete(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
-			{
-				Config: testAccAzureRMhybridcomputeMachine_basic(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
+	data := acceptance.BuildTestData(t, "azurerm_hybrid_compute_machine", "test")
+	r := HybridComputeMachineResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.ImportStep(),
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
 	})
 }
 
-func TestAccAzureRMhybridcomputeMachine_updateIdentity(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAzureRMhybridcomputeMachine_complete(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
-			{
-				Config: testAccAzureRMhybridcomputeMachine_updateIdentity(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
+func TestAccHybridComputeMachine_updateIdentity(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_hybrid_compute_machine", "test")
+	r := HybridComputeMachineResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.ImportStep(),
+		{
+			Config: r.updateIdentity(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
 	})
 }
 
-func TestAccAzureRMhybridcomputeMachine_updateLocationData(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAzureRMhybridcomputeMachine_complete(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
-			{
-				Config: testAccAzureRMhybridcomputeMachine_updateLocationData(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-				),
-			},
-			data.ImportStep(),
+func TestAccHybridComputeMachine_updateLocationData(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_hybrid_compute_machine", "test")
+	r := HybridComputeMachineResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.ImportStep(),
+		{
+			Config: r.updateLocationData(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
 	})
 }
 
-func testCheckAzureRMhybridcomputeMachineExists(resourceName string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		client := acceptance.AzureProvider.Meta().(*clients.Client).HybridCompute.MachineClient
-		ctx := acceptance.AzureProvider.Meta().(*clients.Client).StopContext
-		rs, ok := s.RootModule().Resources[resourceName]
-		if !ok {
-			return fmt.Errorf("hybridcompute Machine not found: %s", resourceName)
-		}
-		id, err := parse.HybridComputeMachineID(rs.Primary.ID)
-		if err != nil {
-			return err
-		}
-		if resp, err := client.Get(ctx, id.ResourceGroup, id.MachineName, ""); err != nil {
-			if utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("bad: Hybridcompute Machine %q does not exist", id.MachineName)
-			}
-			return fmt.Errorf("bad: Get on Hybridcompute.MachineClient: %+v", err)
-		}
-		return nil
+func (r HybridComputeMachineResource) Exists(ctx context.Context, client *clients.Client, state *terraform.InstanceState) (*bool, error) {
+	id, err := parse.HybridComputeMachineID(state.ID)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func testCheckAzureRMhybridcomputeMachineDestroy(s *terraform.State) error {
-	client := acceptance.AzureProvider.Meta().(*clients.Client).HybridCompute.MachineClient
-	ctx := acceptance.AzureProvider.Meta().(*clients.Client).StopContext
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "azurerm_hybridcompute_machine" {
-			continue
+	resp, err := client.HybridCompute.MachineClient.Get(ctx, id.ResourceGroup, id.MachineName, "")
+	if err != nil {
+		if utils.ResponseWasNotFound(resp.Response) {
+			return utils.Bool(false), nil
 		}
-		id, err := parse.HybridComputeMachineID(rs.Primary.ID)
-		if err != nil {
-			return err
-		}
-		if resp, err := client.Get(ctx, id.ResourceGroup, id.MachineName, ""); err != nil {
-			if !utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("bad: Get on Hybridcompute.MachineClient: %+v", err)
-			}
-		}
-		return nil
+		return nil, fmt.Errorf("retrieving Hybridcompute Machine %q (Resource Group %q): %+v", id.MachineName, id.ResourceGroup, err)
 	}
-	return nil
+	return utils.Bool(true), nil
 }
 
-func testAccAzureRMhybridcomputeMachine_template(data acceptance.TestData) string {
+func (r HybridComputeMachineResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 provider "azurerm" {
   features {}
@@ -205,12 +176,12 @@ resource "azurerm_resource_group" "test" {
 `, data.RandomInteger, data.Locations.Primary)
 }
 
-func testAccAzureRMhybridcomputeMachine_basic(data acceptance.TestData) string {
-	template := testAccAzureRMhybridcomputeMachine_template(data)
+func (r HybridComputeMachineResource) basic(data acceptance.TestData) string {
+	template := r.template(data)
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_hybridcompute_machine" "test" {
+resource "azurerm_hybrid_compute_machine" "test" {
   name = "acctest-hm-%d"
   resource_group_name = azurerm_resource_group.test.name
   location = azurerm_resource_group.test.location
@@ -218,25 +189,25 @@ resource "azurerm_hybridcompute_machine" "test" {
 `, template, data.RandomInteger)
 }
 
-func testAccAzureRMhybridcomputeMachine_requiresImport(data acceptance.TestData) string {
-	config := testAccAzureRMhybridcomputeMachine_basic(data)
+func (r HybridComputeMachineResource) requiresImport(data acceptance.TestData) string {
+	config := r.basic(data)
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_hybridcompute_machine" "import" {
-  name = azurerm_hybridcompute_machine.test.name
-  resource_group_name = azurerm_hybridcompute_machine.test.resource_group_name
-  location = azurerm_hybridcompute_machine.test.location
+resource "azurerm_hybrid_compute_machine" "import" {
+  name = azurerm_hybrid_compute_machine.test.name
+  resource_group_name = azurerm_hybrid_compute_machine.test.resource_group_name
+  location = azurerm_hybrid_compute_machine.test.location
 }
 `, config)
 }
 
-func testAccAzureRMhybridcomputeMachine_complete(data acceptance.TestData) string {
-	template := testAccAzureRMhybridcomputeMachine_template(data)
+func (r HybridComputeMachineResource) complete(data acceptance.TestData) string {
+	template := r.template(data)
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_hybridcompute_machine" "test" {
+resource "azurerm_hybrid_compute_machine" "test" {
   name = "acctest-hm-%d"
   resource_group_name = azurerm_resource_group.test.name
   location = azurerm_resource_group.test.location
@@ -260,12 +231,12 @@ resource "azurerm_hybridcompute_machine" "test" {
 `, template, data.RandomInteger)
 }
 
-func testAccAzureRMhybridcomputeMachine_updateIdentity(data acceptance.TestData) string {
-	template := testAccAzureRMhybridcomputeMachine_template(data)
+func (r HybridComputeMachineResource) updateIdentity(data acceptance.TestData) string {
+	template := r.template(data)
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_hybridcompute_machine" "test" {
+resource "azurerm_hybrid_compute_machine" "test" {
   name = "acctest-hm-%d"
   resource_group_name = azurerm_resource_group.test.name
   location = azurerm_resource_group.test.location
@@ -289,12 +260,12 @@ resource "azurerm_hybridcompute_machine" "test" {
 `, template, data.RandomInteger)
 }
 
-func testAccAzureRMhybridcomputeMachine_updateLocationData(data acceptance.TestData) string {
-	template := testAccAzureRMhybridcomputeMachine_template(data)
+func (r HybridComputeMachineResource) updateLocationData(data acceptance.TestData) string {
+	template := r.template(data)
 	return fmt.Sprintf(`
 %s
 
-resource "azurerm_hybridcompute_machine" "test" {
+resource "azurerm_hybrid_compute_machine" "test" {
   name = "acctest-hm-%d"
   resource_group_name = azurerm_resource_group.test.name
   location = azurerm_resource_group.test.location

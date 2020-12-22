@@ -192,7 +192,7 @@ func resourceHybridComputeMachineCreate(d *schema.ResourceData, meta interface{}
 		}
 	}
 	if existing.ID != nil && *existing.ID != "" {
-		return tf.ImportAsExistsError("azurerm_hybridcompute_machine", id.ID())
+		return tf.ImportAsExistsError("azurerm_hybrid_compute_machine", id.ID())
 	}
 
 	identity := expandArmMachineIdentity(d.Get("identity").([]interface{}))

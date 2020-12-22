@@ -6,35 +6,33 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance/check"
 )
 
-func TestAccDataSourceAzureRMhybridcomputeMachine_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "data.azurerm_hybridcompute_machine", "test")
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:     func() { acceptance.PreCheck(t) },
-		Providers:    acceptance.SupportedProviders,
-		CheckDestroy: testCheckAzureRMhybridcomputeMachineDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccDataSourcehybridcomputeMachine_basic(data),
-				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureRMhybridcomputeMachineExists(data.ResourceName),
-					resource.TestCheckResourceAttrSet(data.ResourceName, "location"),
-					resource.TestCheckResourceAttrSet(data.ResourceName, "tags"),
-				),
-			},
+type HybridComputeMachineDataSource struct{}
+
+func TestAccDataSourceHybridComputeMachine_basic(t *testing.T) {
+	data := acceptance.BuildTestData(t, "data.azurerm_hybrid_compute_machine", "test")
+
+	data.DataSourceTest(t, []resource.TestStep{
+		{
+			Config: HybridComputeMachineDataSource{}.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).Key("location").Exists(),
+				check.That(data.ResourceName).Key("tags").Exists(),
+			),
 		},
 	})
 }
 
-func testAccDataSourcehybridcomputeMachine_basic(data acceptance.TestData) string {
-	config := testAccAzureRMhybridcomputeMachine_basic(data)
+func (d HybridComputeMachineDataSource) basic(data acceptance.TestData) string {
+	config := HybridComputeMachineResource{}.basic(data)
 	return fmt.Sprintf(`
 %s
 
-data "azurerm_hybridcompute_machine" "test" {
-  name = azurerm_hybridcompute_machine.test.name
-  resource_group_name = azurerm_hybridcompute_machine.test.resource_group_name
+data "azurerm_hybrid_compute_machine" "test" {
+  name = azurerm_hybrid_compute_machine.test.name
+  resource_group_name = azurerm_hybrid_compute_machine.test.resource_group_name
 }
 `, config)
 }
