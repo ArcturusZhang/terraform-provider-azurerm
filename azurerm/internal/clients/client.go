@@ -44,6 +44,7 @@ import (
 	healthcare "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/healthcare/client"
 	hpccache "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/hpccache/client"
 	hsm "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/hsm/client"
+	hybridcompute "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/hybridcompute/client"
 	iotcentral "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/iotcentral/client"
 	iothub "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/iothub/client"
 	timeseriesinsights "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/iottimeseriesinsights/client"
@@ -139,6 +140,7 @@ type Client struct {
 	HSM                   *hsm.Client
 	HDInsight             *hdinsight.Client
 	HealthCare            *healthcare.Client
+	HybridCompute         *hybridcompute.Client
 	IoTCentral            *iotcentral.Client
 	IoTHub                *iothub.Client
 	IoTTimeSeriesInsights *timeseriesinsights.Client
@@ -236,6 +238,7 @@ func (client *Client) Build(ctx context.Context, o *common.ClientOptions) error 
 	client.HSM = hsm.NewClient(o)
 	client.HDInsight = hdinsight.NewClient(o)
 	client.HealthCare = healthcare.NewClient(o)
+	client.HybridCompute = hybridcompute.NewClient(o)
 	client.IoTCentral = iotcentral.NewClient(o)
 	client.IoTHub = iothub.NewClient(o)
 	client.IoTTimeSeriesInsights = timeseriesinsights.NewClient(o)
