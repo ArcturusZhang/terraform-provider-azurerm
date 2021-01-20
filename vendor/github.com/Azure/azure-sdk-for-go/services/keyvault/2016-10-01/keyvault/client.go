@@ -1508,9 +1508,6 @@ func (client BaseClient) GetCertificateIssuers(ctx context.Context, vaultBaseURL
 	if result.cilr.hasNextLink() && result.cilr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.cilr.hasNextLink() && result.cilr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -1799,9 +1796,6 @@ func (client BaseClient) GetCertificates(ctx context.Context, vaultBaseURL strin
 	if result.clr.hasNextLink() && result.clr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.clr.hasNextLink() && result.clr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -1929,9 +1923,6 @@ func (client BaseClient) GetCertificateVersions(ctx context.Context, vaultBaseUR
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "keyvault.BaseClient", "GetCertificateVersions", resp, "Failure responding to request")
 		return
-	}
-	if result.clr.hasNextLink() && result.clr.IsEmpty() {
-		err = result.NextWithContext(ctx)
 	}
 	if result.clr.hasNextLink() && result.clr.IsEmpty() {
 		err = result.NextWithContext(ctx)
@@ -2152,9 +2143,6 @@ func (client BaseClient) GetDeletedCertificates(ctx context.Context, vaultBaseUR
 	if result.dclr.hasNextLink() && result.dclr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.dclr.hasNextLink() && result.dclr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -2367,9 +2355,6 @@ func (client BaseClient) GetDeletedKeys(ctx context.Context, vaultBaseURL string
 	if result.dklr.hasNextLink() && result.dklr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.dklr.hasNextLink() && result.dklr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -2575,9 +2560,6 @@ func (client BaseClient) GetDeletedSecrets(ctx context.Context, vaultBaseURL str
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "keyvault.BaseClient", "GetDeletedSecrets", resp, "Failure responding to request")
 		return
-	}
-	if result.dslr.hasNextLink() && result.dslr.IsEmpty() {
-		err = result.NextWithContext(ctx)
 	}
 	if result.dslr.hasNextLink() && result.dslr.IsEmpty() {
 		err = result.NextWithContext(ctx)
@@ -2795,9 +2777,6 @@ func (client BaseClient) GetKeys(ctx context.Context, vaultBaseURL string, maxre
 	if result.klr.hasNextLink() && result.klr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.klr.hasNextLink() && result.klr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -2925,9 +2904,6 @@ func (client BaseClient) GetKeyVersions(ctx context.Context, vaultBaseURL string
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "keyvault.BaseClient", "GetKeyVersions", resp, "Failure responding to request")
 		return
-	}
-	if result.klr.hasNextLink() && result.klr.IsEmpty() {
-		err = result.NextWithContext(ctx)
 	}
 	if result.klr.hasNextLink() && result.klr.IsEmpty() {
 		err = result.NextWithContext(ctx)
@@ -3158,9 +3134,6 @@ func (client BaseClient) GetSasDefinitions(ctx context.Context, vaultBaseURL str
 	if result.sdlr.hasNextLink() && result.sdlr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.sdlr.hasNextLink() && result.sdlr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -3377,9 +3350,6 @@ func (client BaseClient) GetSecrets(ctx context.Context, vaultBaseURL string, ma
 	if result.slr.hasNextLink() && result.slr.IsEmpty() {
 		err = result.NextWithContext(ctx)
 	}
-	if result.slr.hasNextLink() && result.slr.IsEmpty() {
-		err = result.NextWithContext(ctx)
-	}
 
 	return
 }
@@ -3507,9 +3477,6 @@ func (client BaseClient) GetSecretVersions(ctx context.Context, vaultBaseURL str
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "keyvault.BaseClient", "GetSecretVersions", resp, "Failure responding to request")
 		return
-	}
-	if result.slr.hasNextLink() && result.slr.IsEmpty() {
-		err = result.NextWithContext(ctx)
 	}
 	if result.slr.hasNextLink() && result.slr.IsEmpty() {
 		err = result.NextWithContext(ctx)
@@ -3729,9 +3696,6 @@ func (client BaseClient) GetStorageAccounts(ctx context.Context, vaultBaseURL st
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "keyvault.BaseClient", "GetStorageAccounts", resp, "Failure responding to request")
 		return
-	}
-	if result.slr.hasNextLink() && result.slr.IsEmpty() {
-		err = result.NextWithContext(ctx)
 	}
 	if result.slr.hasNextLink() && result.slr.IsEmpty() {
 		err = result.NextWithContext(ctx)
