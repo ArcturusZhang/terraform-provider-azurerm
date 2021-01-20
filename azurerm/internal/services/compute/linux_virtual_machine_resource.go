@@ -529,7 +529,11 @@ func resourceLinuxVirtualMachineRead(d *schema.ResourceData, meta interface{}) e
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 
-	if err := d.Set("identity", flattenVirtualMachineIdentity(resp.Identity)); err != nil {
+	identity, err := flattenVirtualMachineIdentity(resp.Identity)
+	if err != nil {
+		return err
+	}
+	if err := d.Set("identity", identity); err != nil {
 		return fmt.Errorf("setting `identity`: %+v", err)
 	}
 
@@ -605,7 +609,7 @@ func resourceLinuxVirtualMachineRead(d *schema.ResourceData, meta interface{}) e
 			if err != nil {
 				return fmt.Errorf("flattening `admin_ssh_key`: %+v", err)
 			}
-			if err := d.Set("admin_ssh_key", flattenedSSHKeys); err != nil {
+			if err := d.Set("admin_ssh_key", schema.NewSet(SSHKeySchemaHash, *flattenedSSHKeys)); err != nil {
 				return fmt.Errorf("setting `admin_ssh_key`: %+v", err)
 			}
 		}

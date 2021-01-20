@@ -19,6 +19,9 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/clients"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/containers/parse"
+	msiparse "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/msi/parse"
+	msivalidate "github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/msi/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tags"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/timeouts"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
@@ -29,6 +32,7 @@ func resourceArmContainerGroup() *schema.Resource {
 		Create: resourceArmContainerGroupCreate,
 		Read:   resourceArmContainerGroupRead,
 		Delete: resourceArmContainerGroupDelete,
+		Update: resourceArmContainerGroupUpdate,
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
 		},
@@ -146,14 +150,14 @@ func resourceArmContainerGroup() *schema.Resource {
 							ForceNew: true,
 							Elem: &schema.Schema{
 								Type:         schema.TypeString,
-								ValidateFunc: validation.NoZeroValues,
+								ValidateFunc: msivalidate.UserAssignedIdentityID,
 							},
 						},
 					},
 				},
 			},
 
-			"tags": tags.ForceNewSchema(),
+			"tags": tags.Schema(),
 
 			"restart_policy": {
 				Type:             schema.TypeString,
@@ -343,6 +347,13 @@ func resourceArmContainerGroup() *schema.Resource {
 										Sensitive:    true,
 										ForceNew:     true,
 										ValidateFunc: validation.StringIsNotEmpty,
+									},
+
+									"empty_dir": {
+										Type:     schema.TypeBool,
+										Optional: true,
+										ForceNew: true,
+										Default:  false,
 									},
 
 									"git_repo": {
@@ -588,6 +599,29 @@ func resourceArmContainerGroupCreate(d *schema.ResourceData, meta interface{}) e
 	return resourceArmContainerGroupRead(d, meta)
 }
 
+func resourceArmContainerGroupUpdate(d *schema.ResourceData, meta interface{}) error {
+	client := meta.(*clients.Client).Containers.GroupsClient
+	ctx, cancel := timeouts.ForUpdate(meta.(*clients.Client).StopContext, d)
+	defer cancel()
+
+	id, err := parse.ContainerGroupID(d.Id())
+	if err != nil {
+		return err
+	}
+
+	t := d.Get("tags").(map[string]interface{})
+
+	parameters := containerinstance.Resource{
+		Tags: tags.Expand(t),
+	}
+
+	if _, err := client.Update(ctx, id.ResourceGroup, id.Name, parameters); err != nil {
+		return fmt.Errorf("Error updating container group %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
+	}
+
+	return resourceArmContainerGroupRead(d, meta)
+}
+
 func resourceArmContainerGroupRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).Containers.GroupsClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
@@ -617,7 +651,11 @@ func resourceArmContainerGroupRead(d *schema.ResourceData, meta interface{}) err
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 
-	if err := d.Set("identity", flattenContainerGroupIdentity(resp.Identity)); err != nil {
+	identity, err := flattenContainerGroupIdentity(resp.Identity)
+	if err != nil {
+		return err
+	}
+	if err := d.Set("identity", identity); err != nil {
 		return fmt.Errorf("Error setting `identity`: %+v", err)
 	}
 
@@ -971,6 +1009,7 @@ func expandContainerVolumes(input interface{}) (*[]containerinstance.VolumeMount
 		name := volumeConfig["name"].(string)
 		mountPath := volumeConfig["mount_path"].(string)
 		readOnly := volumeConfig["read_only"].(bool)
+		emptyDir := volumeConfig["empty_dir"].(bool)
 		shareName := volumeConfig["share_name"].(string)
 		storageAccountName := volumeConfig["storage_account_name"].(string)
 		storageAccountKey := volumeConfig["storage_account_key"].(string)
@@ -992,19 +1031,24 @@ func expandContainerVolumes(input interface{}) (*[]containerinstance.VolumeMount
 		gitRepoVolume := expandGitRepoVolume(volumeConfig["git_repo"].([]interface{}))
 
 		switch {
+		case emptyDir:
+			if shareName != "" || storageAccountName != "" || storageAccountKey != "" || secret != nil || gitRepoVolume != nil {
+				return nil, nil, fmt.Errorf("only one of `empty_dir` volume, `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
+			}
+			cv.EmptyDir = map[string]string{}
 		case gitRepoVolume != nil:
 			if shareName != "" || storageAccountName != "" || storageAccountKey != "" || secret != nil {
-				return nil, nil, fmt.Errorf("only one of `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
+				return nil, nil, fmt.Errorf("only one of `empty_dir` volume, `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
 			}
 			cv.GitRepo = gitRepoVolume
 		case secret != nil:
 			if shareName != "" || storageAccountName != "" || storageAccountKey != "" {
-				return nil, nil, fmt.Errorf("only one of `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
+				return nil, nil, fmt.Errorf("only one of `empty_dir` volume, `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
 			}
 			cv.Secret = secret
 		default:
 			if shareName == "" && storageAccountName == "" && storageAccountKey == "" {
-				return nil, nil, fmt.Errorf("only one of `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
+				return nil, nil, fmt.Errorf("only one of `empty_dir` volume, `git_repo` volume, `secret` volume or storage account volume (`share_name`, `storage_account_name`, and `storage_account_key`) can be specified")
 			} else if shareName == "" || storageAccountName == "" || storageAccountKey == "" {
 				return nil, nil, fmt.Errorf("when using a storage account volume, all of `share_name`, `storage_account_name`, `storage_account_key` must be specified")
 			}
@@ -1111,9 +1155,9 @@ func expandContainerProbe(input interface{}) *containerinstance.ContainerProbe {
 	return &probe
 }
 
-func flattenContainerGroupIdentity(identity *containerinstance.ContainerGroupIdentity) []interface{} {
+func flattenContainerGroupIdentity(identity *containerinstance.ContainerGroupIdentity) ([]interface{}, error) {
 	if identity == nil {
-		return make([]interface{}, 0)
+		return make([]interface{}, 0), nil
 	}
 
 	result := make(map[string]interface{})
@@ -1133,12 +1177,16 @@ func flattenContainerGroupIdentity(identity *containerinstance.ContainerGroupIde
 			}
 		*/
 		for key := range identity.UserAssignedIdentities {
-			identityIds = append(identityIds, key)
+			parsedId, err := msiparse.UserAssignedIdentityID(key)
+			if err != nil {
+				return nil, err
+			}
+			identityIds = append(identityIds, parsedId.ID())
 		}
 	}
 	result["identity_ids"] = identityIds
 
-	return []interface{}{result}
+	return []interface{}{result}, nil
 }
 
 func flattenContainerImageRegistryCredentials(d *schema.ResourceData, input *[]containerinstance.ImageRegistryCredential) []interface{} {
@@ -1338,6 +1386,10 @@ func flattenContainerVolumes(volumeMounts *[]containerinstance.VolumeMount, cont
 							volumeConfig["storage_account_name"] = *file.StorageAccountName
 						}
 						// skip storage_account_key, is always nil
+					}
+
+					if cgv.EmptyDir != nil {
+						volumeConfig["empty_dir"] = true
 					}
 
 					volumeConfig["git_repo"] = flattenGitRepoVolume(cgv.GitRepo)
