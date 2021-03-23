@@ -1,19 +1,24 @@
 package client
 
 import (
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/msi/2018-11-30/armmsi"
+	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 )
 
 type Client struct {
-	UserAssignedIdentitiesClient *msi.UserAssignedIdentitiesClient
+	UserAssignedIdentitiesClient *armmsi.UserAssignedIDentitiesClient
 }
 
 func NewClient(o *common.ClientOptions) *Client {
-	UserAssignedIdentitiesClient := msi.NewUserAssignedIdentitiesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&UserAssignedIdentitiesClient.Client, o.ResourceManagerAuthorizer)
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		panic(err)
+	}
+	UserAssignedIdentitiesClient := armmsi.NewUserAssignedIDentitiesClient(armcore.NewDefaultConnection(cred, nil), o.SubscriptionId)
 
 	return &Client{
-		UserAssignedIdentitiesClient: &UserAssignedIdentitiesClient,
+		UserAssignedIdentitiesClient: UserAssignedIdentitiesClient,
 	}
 }

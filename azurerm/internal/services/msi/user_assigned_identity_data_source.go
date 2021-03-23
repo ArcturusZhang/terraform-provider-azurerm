@@ -58,9 +58,9 @@ func dataSourceArmUserAssignedIdentityRead(d *schema.ResourceData, meta interfac
 
 	id := parse.NewUserAssignedIdentityID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 
-	resp, err := client.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(resp.RawResponse) {
 			return fmt.Errorf("User Assigned Identity %q was not found in Resource Group %q", id.Name, id.ResourceGroup)
 		}
 		return fmt.Errorf("retrieving User Assigned Identity %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
@@ -68,17 +68,18 @@ func dataSourceArmUserAssignedIdentityRead(d *schema.ResourceData, meta interfac
 
 	d.SetId(id.ID())
 
-	d.Set("location", location.NormalizeNilable(resp.Location))
+	identity := resp.IDentity
+	d.Set("location", location.NormalizeNilable(identity.Location))
 
-	if props := resp.UserAssignedIdentityProperties; props != nil {
+	if props := identity.Properties; props != nil {
 		if principalId := props.PrincipalID; principalId != nil {
-			d.Set("principal_id", principalId.String())
+			d.Set("principal_id", principalId)
 		}
 
 		if clientId := props.ClientID; clientId != nil {
-			d.Set("client_id", clientId.String())
+			d.Set("client_id", clientId)
 		}
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, identity.Tags)
 }

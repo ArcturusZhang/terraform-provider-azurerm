@@ -11,6 +11,10 @@ func ResponseWasNotFound(resp autorest.Response) bool {
 	return ResponseWasStatusCode(resp, http.StatusNotFound)
 }
 
+func Track2ResponseWasNotFound(resp *http.Response) bool {
+	return HTTPResponseWasStatusCode(resp, http.StatusNotFound)
+}
+
 func ResponseWasBadRequest(resp autorest.Response) bool {
 	return ResponseWasStatusCode(resp, http.StatusBadRequest)
 }
@@ -42,6 +46,16 @@ func ResponseErrorIsRetryable(err error) bool {
 func ResponseWasStatusCode(resp autorest.Response, statusCode int) bool { // nolint: unparam
 	if r := resp.Response; r != nil {
 		if r.StatusCode == statusCode {
+			return true
+		}
+	}
+
+	return false
+}
+
+func HTTPResponseWasStatusCode(resp *http.Response, statusCode int) bool { // nolint: unparam
+	if resp != nil {
+		if resp.StatusCode == statusCode {
 			return true
 		}
 	}
