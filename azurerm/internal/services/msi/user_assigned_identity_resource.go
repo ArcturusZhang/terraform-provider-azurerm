@@ -84,18 +84,19 @@ func resourceArmUserAssignedIdentityCreateUpdate(d *schema.ResourceData, meta in
 	resourceId := parse.NewUserAssignedIdentityID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 	if d.IsNewResource() {
 		existing, err := client.Get(ctx, resourceId.ResourceGroup, resourceId.Name, nil)
+		log.Printf("[DAPZHANG] %+v", err)
 		if err != nil {
-			if !utils.Track2ResponseWasNotFound(existing.RawResponse) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("checking for presence of existing User Assigned Identity %q (Resource Group %q): %+v", resourceId.Name, resourceId.ResourceGroup, err)
 			}
 		}
 
-		if existing.IDentity != nil && existing.IDentity.ID != nil && *existing.IDentity.ID != "" {
+		if existing.Identity != nil && existing.Identity.ID != nil && *existing.Identity.ID != "" {
 			return tf.ImportAsExistsError("azurerm_user_assigned_identity", resourceId.ID())
 		}
 	}
 
-	identity := armmsi.IDentity{
+	identity := armmsi.Identity{
 		TrackedResource: armmsi.TrackedResource{
 			Location: utils.String(location),
 			Tags:     tags.Track2Expand(t),
@@ -129,7 +130,7 @@ func resourceArmUserAssignedIdentityRead(d *schema.ResourceData, meta interface{
 		return fmt.Errorf("retrieving User Assigned Identity %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	identity := resp.IDentity
+	identity := resp.Identity
 	d.Set("name", id.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
 	d.Set("location", location.NormalizeNilable(identity.Location))

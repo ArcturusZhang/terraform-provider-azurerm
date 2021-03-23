@@ -68,7 +68,7 @@ func dataSourceArmUserAssignedIdentityRead(d *schema.ResourceData, meta interfac
 
 	d.SetId(id.ID())
 
-	identity := resp.IDentity
+	identity := resp.Identity
 	d.Set("location", location.NormalizeNilable(identity.Location))
 
 	if props := identity.Properties; props != nil {

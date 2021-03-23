@@ -3,6 +3,7 @@ package utils
 import (
 	"net"
 	"net/http"
+	"reflect"
 
 	"github.com/Azure/go-autorest/autorest"
 )
@@ -11,7 +12,11 @@ func ResponseWasNotFound(resp autorest.Response) bool {
 	return ResponseWasStatusCode(resp, http.StatusNotFound)
 }
 
-func Track2ResponseWasNotFound(resp *http.Response) bool {
+// err here will be a "github.com/Azure/azure-sdk-for-go/sdk/internal/runtime".ResponseError,
+// but it is in an internal package, we cannot directly use it,
+// therefore we have to use reflect to get the raw http response out of it
+func Track2ResponseWasNotFound(err interface{}) bool {
+	resp := reflect.ValueOf(err).MethodByName("RawResponse").Call([]reflect.Value{})[0].Interface().(*http.Response)
 	return HTTPResponseWasStatusCode(resp, http.StatusNotFound)
 }
 

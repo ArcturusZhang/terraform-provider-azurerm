@@ -121,13 +121,14 @@ github.com/Azure/azure-sdk-for-go/services/timeseriesinsights/mgmt/2020-05-15/ti
 github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager
 github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web
 github.com/Azure/azure-sdk-for-go/version
-# github.com/Azure/azure-sdk-for-go/sdk/arm/msi v0.1.0 => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.1.0
+# github.com/Azure/azure-sdk-for-go/sdk/arm/msi v0.1.0 => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.2.0
 ## explicit
 github.com/Azure/azure-sdk-for-go/sdk/arm/msi/2018-11-30/armmsi
 # github.com/Azure/azure-sdk-for-go/sdk/armcore v0.6.0
 ## explicit
 github.com/Azure/azure-sdk-for-go/sdk/armcore
 # github.com/Azure/azure-sdk-for-go/sdk/azcore v0.14.1
+## explicit
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 # github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.8.0
 ## explicit
@@ -765,4 +766,4 @@ gopkg.in/warnings.v0
 # gopkg.in/yaml.v2 v2.2.8
 ## explicit
 gopkg.in/yaml.v2
-# github.com/Azure/azure-sdk-for-go/sdk/arm/msi => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.1.0
+# github.com/Azure/azure-sdk-for-go/sdk/arm/msi => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.2.0

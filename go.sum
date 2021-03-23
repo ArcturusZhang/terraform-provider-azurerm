@@ -33,8 +33,8 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0 h1:STgFzyU5/8miMl0//zKh2aQeTyeaUH3WN9bSUiJ09bA=
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.1.0 h1:1JOzLOXMkbPhGL2gkdxwYJM4+gLfDjjXz97Zs/vAk+M=
-github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.1.0/go.mod h1:AITngE7Cn+eaVCeBNjg2kYhmL2RwDWx298NbGEHruE4=
+github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.2.0 h1:+aDlmMUzwfu5Ln22oYUXzPcNbR9mOhHM188WaXW8bXM=
+github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.2.0/go.mod h1:AITngE7Cn+eaVCeBNjg2kYhmL2RwDWx298NbGEHruE4=
 github.com/Azure/azure-sdk-for-go v35.0.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/azure-sdk-for-go v42.1.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/azure-sdk-for-go v45.0.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
