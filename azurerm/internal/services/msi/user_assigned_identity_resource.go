@@ -123,7 +123,7 @@ func resourceArmUserAssignedIdentityRead(d *schema.ResourceData, meta interface{
 
 	resp, err := client.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.Track2ResponseWasNotFound(resp.RawResponse) {
+		if utils.Track2ResponseWasNotFound(err) {
 			d.SetId("")
 			return nil
 		}
