@@ -57,12 +57,12 @@ func (r UserAssignedIdentityResource) Exists(ctx context.Context, client *client
 		return nil, err
 	}
 
-	resp, err := client.MSI.UserAssignedIdentitiesClient.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := client.MSI.UserAssignedIdentitiesClient.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving User Assigned Identity %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	return utils.Bool(resp.UserAssignedIdentityProperties != nil), nil
+	return utils.Bool(resp.Identity != nil && resp.Identity.Properties != nil), nil
 }
 
 func (r UserAssignedIdentityResource) basic(data acceptance.TestData) string {

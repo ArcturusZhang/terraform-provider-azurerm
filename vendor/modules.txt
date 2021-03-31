@@ -55,7 +55,6 @@ github.com/Azure/azure-sdk-for-go/services/maps/mgmt/2018-05-01/maps
 github.com/Azure/azure-sdk-for-go/services/mariadb/mgmt/2018-06-01/mariadb
 github.com/Azure/azure-sdk-for-go/services/marketplaceordering/mgmt/2015-06-01/marketplaceordering
 github.com/Azure/azure-sdk-for-go/services/mediaservices/mgmt/2020-05-01/media
-github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi
 github.com/Azure/azure-sdk-for-go/services/mysql/mgmt/2020-01-01/mysql
 github.com/Azure/azure-sdk-for-go/services/netapp/mgmt/2020-09-01/netapp
 github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network
@@ -123,6 +122,9 @@ github.com/Azure/azure-sdk-for-go/services/timeseriesinsights/mgmt/2020-05-15/ti
 github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager
 github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web
 github.com/Azure/azure-sdk-for-go/version
+# github.com/Azure/azure-sdk-for-go/sdk/arm/msi v0.1.0 => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.3.0
+## explicit
+github.com/Azure/azure-sdk-for-go/sdk/arm/msi/2018-11-30/armmsi
 # github.com/Azure/azure-sdk-for-go/sdk/armcore v0.7.0
 ## explicit
 github.com/Azure/azure-sdk-for-go/sdk/armcore
@@ -766,3 +768,4 @@ gopkg.in/warnings.v0
 ## explicit
 gopkg.in/yaml.v2
 # github.com/hashicorp/go-azure-helpers => github.com/ArcturusZhang/go-azure-helpers v0.15.0
+# github.com/Azure/azure-sdk-for-go/sdk/arm/msi => github.com/ArcturusZhang/azure-sdk-for-go/sdk/arm/msi v0.3.0
