@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/hashicorp/go-azure-helpers/sender"
@@ -34,6 +36,9 @@ type ClientOptions struct {
 	Environment                 azure.Environment
 	Features                    features.UserFeatures
 	StorageUseAzureAD           bool
+
+	// Track 2
+	ResourceManagerConnection *armcore.Connection
 }
 
 func (o ClientOptions) ConfigureClient(c *autorest.Client, authorizer autorest.Authorizer) {
@@ -49,6 +54,18 @@ func (o ClientOptions) ConfigureClient(c *autorest.Client, authorizer autorest.A
 		}
 		c.RequestInspector = withCorrelationRequestID(id)
 	}
+}
+
+func (o *ClientOptions) BuildResourceManagerConnection(cred azcore.TokenCredential) {
+	// TODO -- needs a way to put policy.NewRequestLoggingPolicy("AzureRM") in
+	o.ResourceManagerConnection = armcore.NewConnection(o.ResourceManagerEndpoint, cred, &armcore.ConnectionOptions{
+		Telemetry: azcore.TelemetryOptions{
+			Value: TelemetryValue(o.TerraformVersion, o.PartnerId, o.DisableTerraformPartnerID),
+		},
+		Logging: azcore.LogOptions{
+			IncludeBody: true,
+		},
+	})
 }
 
 func setUserAgent(client *autorest.Client, tfVersion, partnerID string, disableTerraformPartnerID bool) {
@@ -73,4 +90,31 @@ func setUserAgent(client *autorest.Client, tfVersion, partnerID string, disableT
 	if partnerID != "" {
 		client.UserAgent = fmt.Sprintf("%s pid-%s", client.UserAgent, partnerID)
 	}
+
+	// TODO -- refactor this to reuse the TelemetryValue function
+}
+
+func TelemetryValue(tfVersion, partnerID string, disableTerraformPartnerID bool) string {
+	tfUserAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", tfVersion, meta.SDKVersionString())
+
+	providerUserAgent := fmt.Sprintf("%s terraform-provider-azurerm/%s", tfUserAgent, version.ProviderVersion)
+
+	// append the CloudShell version to the user agent if it exists
+	if azureAgent := os.Getenv("AZURE_HTTP_USER_AGENT"); azureAgent != "" {
+		providerUserAgent = fmt.Sprintf("%s %s", providerUserAgent, azureAgent)
+	}
+
+	// only one pid can be interpreted currently
+	// hence, send partner ID if present, otherwise send Terraform GUID
+	// unless users have opted out
+	if partnerID == "" && !disableTerraformPartnerID {
+		// Microsoft’s Terraform Partner ID is this specific GUID
+		partnerID = "222c6c49-1b0a-5959-a213-6608f9eb8820"
+	}
+
+	if partnerID != "" {
+		providerUserAgent = fmt.Sprintf("%s pid-%s", providerUserAgent, partnerID)
+	}
+
+	return providerUserAgent
 }
