@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/msi/2018-11-30/armmsi"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -83,25 +83,27 @@ func resourceArmUserAssignedIdentityCreateUpdate(d *schema.ResourceData, meta in
 
 	resourceId := parse.NewUserAssignedIdentityID(subscriptionId, d.Get("resource_group_name").(string), d.Get("name").(string))
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, resourceId.ResourceGroup, resourceId.Name)
+		existing, err := client.Get(ctx, resourceId.ResourceGroup, resourceId.Name, nil)
+		log.Printf("[DAPZHANG] %+v", err)
 		if err != nil {
-			if !utils.ResponseWasNotFound(existing.Response) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("checking for presence of existing User Assigned Identity %q (Resource Group %q): %+v", resourceId.Name, resourceId.ResourceGroup, err)
 			}
 		}
 
-		if existing.ID != nil && *existing.ID != "" {
+		if existing.Identity != nil && existing.Identity.ID != nil && *existing.Identity.ID != "" {
 			return tf.ImportAsExistsError("azurerm_user_assigned_identity", resourceId.ID())
 		}
 	}
 
-	identity := msi.Identity{
-		Name:     utils.String(resourceId.Name),
-		Location: utils.String(location),
-		Tags:     tags.Expand(t),
+	identity := armmsi.Identity{
+		TrackedResource: armmsi.TrackedResource{
+			Location: utils.String(location),
+			Tags:     tags.Track2Expand(t),
+		},
 	}
 
-	if _, err := client.CreateOrUpdate(ctx, resourceId.ResourceGroup, resourceId.Name, identity); err != nil {
+	if _, err := client.CreateOrUpdate(ctx, resourceId.ResourceGroup, resourceId.Name, identity, nil); err != nil {
 		return fmt.Errorf("creating/updating User Assigned Identity %q (Resource Group %q): %+v", resourceId.Name, resourceId.ResourceGroup, err)
 	}
 
@@ -119,30 +121,31 @@ func resourceArmUserAssignedIdentityRead(d *schema.ResourceData, meta interface{
 		return err
 	}
 
-	resp, err := client.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			d.SetId("")
 			return nil
 		}
 		return fmt.Errorf("retrieving User Assigned Identity %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
+	identity := resp.Identity
 	d.Set("name", id.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
-	d.Set("location", location.NormalizeNilable(resp.Location))
+	d.Set("location", location.NormalizeNilable(identity.Location))
 
-	if props := resp.UserAssignedIdentityProperties; props != nil {
+	if props := identity.Properties; props != nil {
 		if principalId := props.PrincipalID; principalId != nil {
-			d.Set("principal_id", principalId.String())
+			d.Set("principal_id", principalId)
 		}
 
 		if clientId := props.ClientID; clientId != nil {
-			d.Set("client_id", clientId.String())
+			d.Set("client_id", clientId)
 		}
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, identity.Tags)
 }
 
 func resourceArmUserAssignedIdentityDelete(d *schema.ResourceData, meta interface{}) error {
@@ -155,7 +158,7 @@ func resourceArmUserAssignedIdentityDelete(d *schema.ResourceData, meta interfac
 		return err
 	}
 
-	if _, err = client.Delete(ctx, id.ResourceGroup, id.Name); err != nil {
+	if _, err = client.Delete(ctx, id.ResourceGroup, id.Name, nil); err != nil {
 		return fmt.Errorf("deleting User Assigned Identity %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
