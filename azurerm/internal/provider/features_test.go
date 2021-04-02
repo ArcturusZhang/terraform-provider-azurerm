@@ -68,6 +68,7 @@ func TestExpandFeatures(t *testing.T) {
 						map[string]interface{}{
 							"delete_os_disk_on_deletion": true,
 							"graceful_shutdown":          true,
+							"force_deletion": true,
 						},
 					},
 					"virtual_machine_scale_set": []interface{}{
@@ -94,6 +95,7 @@ func TestExpandFeatures(t *testing.T) {
 				VirtualMachine: features.VirtualMachineFeatures{
 					DeleteOSDiskOnDeletion: true,
 					GracefulShutdown:       true,
+					ForceDeletion: true,
 				},
 				VirtualMachineScaleSet: features.VirtualMachineScaleSetFeatures{
 					RollInstancesWhenRequired: true,
@@ -108,6 +110,7 @@ func TestExpandFeatures(t *testing.T) {
 						map[string]interface{}{
 							"delete_os_disk_on_deletion": false,
 							"graceful_shutdown":          false,
+							"force_deletion": false,
 						},
 					},
 					"network_locking": []interface{}{
@@ -155,6 +158,7 @@ func TestExpandFeatures(t *testing.T) {
 				VirtualMachine: features.VirtualMachineFeatures{
 					DeleteOSDiskOnDeletion: false,
 					GracefulShutdown:       false,
+					ForceDeletion: false,
 				},
 				VirtualMachineScaleSet: features.VirtualMachineScaleSetFeatures{
 					RollInstancesWhenRequired: false,
@@ -390,6 +394,7 @@ func TestExpandFeaturesVirtualMachine(t *testing.T) {
 				VirtualMachine: features.VirtualMachineFeatures{
 					DeleteOSDiskOnDeletion: true,
 					GracefulShutdown:       false,
+					ForceDeletion: true,
 				},
 			},
 		},
@@ -409,6 +414,7 @@ func TestExpandFeaturesVirtualMachine(t *testing.T) {
 				VirtualMachine: features.VirtualMachineFeatures{
 					DeleteOSDiskOnDeletion: true,
 					GracefulShutdown:       true,
+					ForceDeletion: false,
 				},
 			},
 		},
@@ -428,6 +434,27 @@ func TestExpandFeaturesVirtualMachine(t *testing.T) {
 				VirtualMachine: features.VirtualMachineFeatures{
 					DeleteOSDiskOnDeletion: false,
 					GracefulShutdown:       false,
+					ForceDeletion: false,
+				},
+			},
+		},
+		{
+			Name: "Delete OS Disk and Force Deletion Enabled",
+			Input: []interface{}{
+				map[string]interface{}{
+					"virtual_machine": []interface{}{
+						map[string]interface{}{
+							"delete_os_disk_on_deletion": true,
+							"force_deletion":          true,
+						},
+					},
+				},
+			},
+			Expected: features.UserFeatures{
+				VirtualMachine: features.VirtualMachineFeatures{
+					DeleteOSDiskOnDeletion: true,
+					GracefulShutdown:       false,
+					ForceDeletion: true,
 				},
 			},
 		},

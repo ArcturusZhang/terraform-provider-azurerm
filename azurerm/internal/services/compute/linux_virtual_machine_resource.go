@@ -1135,32 +1135,22 @@ func resourceLinuxVirtualMachineDelete(d *schema.ResourceData, meta interface{})
 		return fmt.Errorf("retrieving Linux Virtual Machine %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	// If the VM was in a Failed state we can skip powering off, since that'll fail
-	if strings.EqualFold(*existing.ProvisioningState, "failed") {
-		log.Printf("[DEBUG] Powering Off Linux Virtual Machine was skipped because the VM was in %q state %q (Resource Group %q).", *existing.ProvisioningState, id.Name, id.ResourceGroup)
-	} else {
-		//ISSUE: 4920
-		// shutting down the Virtual Machine prior to removing it means users are no longer charged for some Azure resources
-		// thus this can be a large cost-saving when deleting larger instances
-		// https://docs.microsoft.com/en-us/azure/virtual-machines/states-lifecycle
-		log.Printf("[DEBUG] Powering Off Linux Virtual Machine %q (Resource Group %q)..", id.Name, id.ResourceGroup)
-		skipShutdown := !meta.(*clients.Client).Features.VirtualMachine.GracefulShutdown
-		powerOffFuture, err := client.PowerOff(ctx, id.ResourceGroup, id.Name, utils.Bool(skipShutdown))
-		if err != nil {
-			return fmt.Errorf("powering off Linux Virtual Machine %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
-		}
-		if err := powerOffFuture.WaitForCompletionRef(ctx, client.Client); err != nil {
-			return fmt.Errorf("waiting for power off of Linux Virtual Machine %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
-		}
-		log.Printf("[DEBUG] Powered Off Linux Virtual Machine %q (Resource Group %q).", id.Name, id.ResourceGroup)
+	forceDeletion := meta.(*clients.Client).Features.VirtualMachine.GracefulShutdown
+	gracefulShutDown := meta.(*clients.Client).Features.VirtualMachine.GracefulShutdown
+	metadata := virtualMachinePowerOffMetadata{
+		ForceDeletion:    forceDeletion,
+		GracefulShutdown: gracefulShutDown,
+		VMClient:         client,
+		Existing:         existing,
+		ID:               id,
+	}
+
+	if err := metadata.powerOff(ctx); err != nil {
+		return err
 	}
 
 	log.Printf("[DEBUG] Deleting Linux Virtual Machine %q (Resource Group %q)..", id.Name, id.ResourceGroup)
-	// @tombuildsstuff: sending `nil` here omits this value from being sent - which matches
-	// the previous behaviour - we're only splitting this out so it's clear why
-	// TODO: support force deletion once it's out of Preview, if applicable
-	var forceDeletion *bool = nil
-	deleteFuture, err := client.Delete(ctx, id.ResourceGroup, id.Name, forceDeletion)
+	deleteFuture, err := client.Delete(ctx, id.ResourceGroup, id.Name, &forceDeletion)
 	if err != nil {
 		return fmt.Errorf("deleting Linux Virtual Machine %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}

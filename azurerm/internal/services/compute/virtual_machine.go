@@ -3,6 +3,8 @@ package compute
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -14,6 +16,47 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/tf/suppress"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 )
+
+type virtualMachinePowerOffMetadata struct {
+	// is force_deletion enabled in features block? If this is enabled, we will explicitly skip the power off
+	ForceDeletion bool
+
+	// is graceful_shutdown enabled in features block?
+	GracefulShutdown bool
+
+	VMClient *compute.VirtualMachinesClient
+	Existing compute.VirtualMachine
+	ID       *parse.VirtualMachineId
+}
+
+func (metadata virtualMachinePowerOffMetadata) powerOff(ctx context.Context) error {
+	// we explicitly skip the power off operation when force deletion is on
+	if metadata.ForceDeletion {
+		return nil
+	}
+
+	// If the VM was in a Failed state we can skip powering off, since that'll fail
+	if strings.EqualFold(*metadata.Existing.ProvisioningState, "failed") {
+		log.Printf("[DEBUG] Powering Off Linux Virtual Machine was skipped because the VM was in %q state %q (Resource Group %q).", *metadata.Existing.ProvisioningState, metadata.ID.Name, metadata.ID.ResourceGroup)
+	} else {
+		//ISSUE: 4920
+		// shutting down the Virtual Machine prior to removing it means users are no longer charged for some Azure resources
+		// thus this can be a large cost-saving when deleting larger instances
+		// https://docs.microsoft.com/en-us/azure/virtual-machines/states-lifecycle
+		log.Printf("[DEBUG] Powering Off Linux Virtual Machine %q (Resource Group %q)..", metadata.ID.Name, metadata.ID.ResourceGroup)
+		skipShutdown := !metadata.GracefulShutdown
+		powerOffFuture, err := metadata.VMClient.PowerOff(ctx, metadata.ID.ResourceGroup, metadata.ID.Name, utils.Bool(skipShutdown))
+		if err != nil {
+			return fmt.Errorf("powering off Linux Virtual Machine %q (Resource Group %q): %+v", metadata.ID.Name, metadata.ID.ResourceGroup, err)
+		}
+		if err := powerOffFuture.WaitForCompletionRef(ctx, metadata.VMClient.Client); err != nil {
+			return fmt.Errorf("waiting for power off of Linux Virtual Machine %q (Resource Group %q): %+v", metadata.ID.Name, metadata.ID.ResourceGroup, err)
+		}
+		log.Printf("[DEBUG] Powered Off Linux Virtual Machine %q (Resource Group %q).", metadata.ID.Name, metadata.ID.ResourceGroup)
+	}
+
+	return nil
+}
 
 func virtualMachineAdditionalCapabilitiesSchema() *schema.Schema {
 	return &schema.Schema{
