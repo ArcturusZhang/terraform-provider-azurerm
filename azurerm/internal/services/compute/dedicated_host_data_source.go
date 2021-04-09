@@ -52,21 +52,22 @@ func dataSourceDedicatedHostRead(d *schema.ResourceData, meta interface{}) error
 	resourceGroupName := d.Get("resource_group_name").(string)
 	hostGroupName := d.Get("dedicated_host_group_name").(string)
 
-	resp, err := client.Get(ctx, resourceGroupName, hostGroupName, name, "")
+	resp, err := client.Get(ctx, resourceGroupName, hostGroupName, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Dedicated Host %q (Host Group Name %q / Resource Group %q) was not found", name, hostGroupName, resourceGroupName)
 		}
 		return fmt.Errorf("Error reading Dedicated Host %q (Host Group Name %q / Resource Group %q): %+v", name, hostGroupName, resourceGroupName, err)
 	}
 
-	d.SetId(*resp.ID)
+	host := *resp.DedicatedHost
+	d.SetId(*host.ID)
 	d.Set("name", name)
 	d.Set("resource_group_name", resourceGroupName)
-	if location := resp.Location; location != nil {
+	if location := host.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 	d.Set("dedicated_host_group_name", hostGroupName)
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, host.Tags)
 }

@@ -173,12 +173,12 @@ func (t DedicatedHostResource) Exists(ctx context.Context, clients *clients.Clie
 		return nil, err
 	}
 
-	resp, err := clients.Compute.DedicatedHostsClient.Get(ctx, id.ResourceGroup, id.HostGroupName, id.HostName, "")
+	resp, err := clients.Compute.DedicatedHostsClient.Get(ctx, id.ResourceGroup, id.HostGroupName, id.HostName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Compute Dedicated Host %q", id.String())
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.DedicatedHost != nil && resp.DedicatedHost.ID != nil), nil
 }
 
 func (r DedicatedHostResource) basic(data acceptance.TestData) string {

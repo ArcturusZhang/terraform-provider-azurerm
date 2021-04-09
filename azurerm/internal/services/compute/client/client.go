@@ -1,25 +1,26 @@
 package client
 
 import (
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/marketplaceordering/mgmt/2015-06-01/marketplaceordering"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 )
 
 type Client struct {
-	AvailabilitySetsClient          *compute.AvailabilitySetsClient
-	DedicatedHostsClient            *compute.DedicatedHostsClient
-	DedicatedHostGroupsClient       *compute.DedicatedHostGroupsClient
-	DisksClient                     *compute.DisksClient
-	DiskAccessClient                *compute.DiskAccessesClient
+	AvailabilitySetsClient          *armcompute.AvailabilitySetsClient
+	DedicatedHostsClient            *armcompute.DedicatedHostsClient
+	DedicatedHostGroupsClient       *armcompute.DedicatedHostGroupsClient
+	DisksClient                     *armcompute.DisksClient
+	DiskAccessClient                *armcompute.DiskAccessesClient
 	DiskEncryptionSetsClient        *compute.DiskEncryptionSetsClient
 	GalleriesClient                 *compute.GalleriesClient
 	GalleryImagesClient             *compute.GalleryImagesClient
 	GalleryImageVersionsClient      *compute.GalleryImageVersionsClient
-	ProximityPlacementGroupsClient  *compute.ProximityPlacementGroupsClient
+	ProximityPlacementGroupsClient  *armcompute.ProximityPlacementGroupsClient
 	MarketplaceAgreementsClient     *marketplaceordering.MarketplaceAgreementsClient
 	ImagesClient                    *compute.ImagesClient
-	SnapshotsClient                 *compute.SnapshotsClient
+	SnapshotsClient                 *armcompute.SnapshotsClient
 	UsageClient                     *compute.UsageClient
 	VMExtensionImageClient          *compute.VirtualMachineExtensionImagesClient
 	VMExtensionClient               *compute.VirtualMachineExtensionsClient
@@ -33,21 +34,6 @@ type Client struct {
 }
 
 func NewClient(o *common.ClientOptions) *Client {
-	availabilitySetsClient := compute.NewAvailabilitySetsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&availabilitySetsClient.Client, o.ResourceManagerAuthorizer)
-
-	dedicatedHostsClient := compute.NewDedicatedHostsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&dedicatedHostsClient.Client, o.ResourceManagerAuthorizer)
-
-	dedicatedHostGroupsClient := compute.NewDedicatedHostGroupsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&dedicatedHostGroupsClient.Client, o.ResourceManagerAuthorizer)
-
-	disksClient := compute.NewDisksClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&disksClient.Client, o.ResourceManagerAuthorizer)
-
-	diskAccessClient := compute.NewDiskAccessesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&diskAccessClient.Client, o.ResourceManagerAuthorizer)
-
 	diskEncryptionSetsClient := compute.NewDiskEncryptionSetsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&diskEncryptionSetsClient.Client, o.ResourceManagerAuthorizer)
 
@@ -65,12 +51,6 @@ func NewClient(o *common.ClientOptions) *Client {
 
 	marketplaceAgreementsClient := marketplaceordering.NewMarketplaceAgreementsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&marketplaceAgreementsClient.Client, o.ResourceManagerAuthorizer)
-
-	proximityPlacementGroupsClient := compute.NewProximityPlacementGroupsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&proximityPlacementGroupsClient.Client, o.ResourceManagerAuthorizer)
-
-	snapshotsClient := compute.NewSnapshotsClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
-	o.ConfigureClient(&snapshotsClient.Client, o.ResourceManagerAuthorizer)
 
 	usageClient := compute.NewUsageClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&usageClient.Client, o.ResourceManagerAuthorizer)
@@ -103,19 +83,19 @@ func NewClient(o *common.ClientOptions) *Client {
 	o.ConfigureClient(&sshPublicKeysClient.Client, o.ResourceManagerAuthorizer)
 
 	return &Client{
-		AvailabilitySetsClient:          &availabilitySetsClient,
-		DedicatedHostsClient:            &dedicatedHostsClient,
-		DedicatedHostGroupsClient:       &dedicatedHostGroupsClient,
-		DisksClient:                     &disksClient,
-		DiskAccessClient:                &diskAccessClient,
+		AvailabilitySetsClient:          armcompute.NewAvailabilitySetsClient(o.ResourceManagerConnection, o.SubscriptionId),
+		DedicatedHostsClient:            armcompute.NewDedicatedHostsClient(o.ResourceManagerConnection, o.SubscriptionId),
+		DedicatedHostGroupsClient:       armcompute.NewDedicatedHostGroupsClient(o.ResourceManagerConnection, o.SubscriptionId),
+		DisksClient:                     armcompute.NewDisksClient(o.ResourceManagerConnection, o.SubscriptionId),
+		DiskAccessClient:                armcompute.NewDiskAccessesClient(o.ResourceManagerConnection, o.SubscriptionId),
 		DiskEncryptionSetsClient:        &diskEncryptionSetsClient,
 		GalleriesClient:                 &galleriesClient,
 		GalleryImagesClient:             &galleryImagesClient,
 		GalleryImageVersionsClient:      &galleryImageVersionsClient,
 		ImagesClient:                    &imagesClient,
 		MarketplaceAgreementsClient:     &marketplaceAgreementsClient,
-		ProximityPlacementGroupsClient:  &proximityPlacementGroupsClient,
-		SnapshotsClient:                 &snapshotsClient,
+		ProximityPlacementGroupsClient:  armcompute.NewProximityPlacementGroupsClient(o.ResourceManagerConnection, o.SubscriptionId),
+		SnapshotsClient:                 armcompute.NewSnapshotsClient(o.ResourceManagerConnection, o.SubscriptionId),
 		UsageClient:                     &usageClient,
 		VMExtensionImageClient:          &vmExtensionImageClient,
 		VMExtensionClient:               &vmExtensionClient,

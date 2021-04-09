@@ -328,12 +328,12 @@ func (ManagedDiskResource) Exists(ctx context.Context, clients *clients.Client, 
 		return nil, err
 	}
 
-	resp, err := clients.Compute.DisksClient.Get(ctx, id.ResourceGroup, id.DiskName)
+	resp, err := clients.Compute.DisksClient.Get(ctx, id.ResourceGroup, id.DiskName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Compute Managed Disk %q", id.String())
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.Disk != nil && resp.Disk.ID != nil), nil
 }
 
 func (ManagedDiskResource) destroyVirtualMachine(ctx context.Context, client *clients.Client, state *terraform.InstanceState) error {

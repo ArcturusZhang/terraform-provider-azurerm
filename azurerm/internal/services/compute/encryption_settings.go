@@ -1,7 +1,7 @@
 package compute
 
 import (
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
 )
@@ -63,42 +63,42 @@ func encryptionSettingsSchema() *schema.Schema {
 	}
 }
 
-func expandManagedDiskEncryptionSettings(settings map[string]interface{}) *compute.EncryptionSettingsCollection {
+func expandManagedDiskEncryptionSettings(settings map[string]interface{}) *armcompute.EncryptionSettingsCollection {
 	enabled := settings["enabled"].(bool)
-	config := &compute.EncryptionSettingsCollection{
+	config := &armcompute.EncryptionSettingsCollection{
 		Enabled: utils.Bool(enabled),
 	}
 
-	var diskEncryptionKey *compute.KeyVaultAndSecretReference
+	var diskEncryptionKey *armcompute.KeyVaultAndSecretReference
 	if v := settings["disk_encryption_key"].([]interface{}); len(v) > 0 {
 		dek := v[0].(map[string]interface{})
 
 		secretURL := dek["secret_url"].(string)
 		sourceVaultId := dek["source_vault_id"].(string)
-		diskEncryptionKey = &compute.KeyVaultAndSecretReference{
+		diskEncryptionKey = &armcompute.KeyVaultAndSecretReference{
 			SecretURL: utils.String(secretURL),
-			SourceVault: &compute.SourceVault{
+			SourceVault: &armcompute.SourceVault{
 				ID: utils.String(sourceVaultId),
 			},
 		}
 	}
 
-	var keyEncryptionKey *compute.KeyVaultAndKeyReference
+	var keyEncryptionKey *armcompute.KeyVaultAndKeyReference
 	if v := settings["key_encryption_key"].([]interface{}); len(v) > 0 {
 		kek := v[0].(map[string]interface{})
 
 		secretURL := kek["key_url"].(string)
 		sourceVaultId := kek["source_vault_id"].(string)
-		keyEncryptionKey = &compute.KeyVaultAndKeyReference{
+		keyEncryptionKey = &armcompute.KeyVaultAndKeyReference{
 			KeyURL: utils.String(secretURL),
-			SourceVault: &compute.SourceVault{
+			SourceVault: &armcompute.SourceVault{
 				ID: utils.String(sourceVaultId),
 			},
 		}
 	}
 
 	// at this time we only support a single element
-	config.EncryptionSettings = &[]compute.EncryptionSettingsElement{
+	config.EncryptionSettings = &[]*armcompute.EncryptionSettingsElement{
 		{
 			DiskEncryptionKey: diskEncryptionKey,
 			KeyEncryptionKey:  keyEncryptionKey,
@@ -107,7 +107,7 @@ func expandManagedDiskEncryptionSettings(settings map[string]interface{}) *compu
 	return config
 }
 
-func flattenManagedDiskEncryptionSettings(encryptionSettings *compute.EncryptionSettingsCollection) []interface{} {
+func flattenManagedDiskEncryptionSettings(encryptionSettings *armcompute.EncryptionSettingsCollection) []interface{} {
 	if encryptionSettings == nil {
 		return []interface{}{}
 	}

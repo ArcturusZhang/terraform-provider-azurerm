@@ -70,12 +70,12 @@ func (t DiskAccessResource) Exists(ctx context.Context, clients *clients.Client,
 		return nil, err
 	}
 
-	resp, err := clients.Compute.DiskAccessClient.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := clients.Compute.DiskAccessClient.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Compute Disk Access %q", id.String())
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.DiskAccess != nil && resp.DiskAccess.ID != nil), nil
 }
 
 func (DiskAccessResource) empty(data acceptance.TestData) string {

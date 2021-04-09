@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
+
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
-	"github.com/hashicorp/go-azure-helpers/response"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -1089,18 +1091,18 @@ func resourceWindowsVirtualMachineUpdate(d *schema.ResourceData, meta interface{
 
 		disksClient := meta.(*clients.Client).Compute.DisksClient
 
-		update := compute.DiskUpdate{
-			DiskUpdateProperties: &compute.DiskUpdateProperties{
+		update := armcompute.DiskUpdate{
+			Properties: &armcompute.DiskUpdateProperties{
 				DiskSizeGB: utils.Int32(int32(newSize)),
 			},
 		}
 
-		future, err := disksClient.Update(ctx, id.ResourceGroup, diskName, update)
+		future, err := disksClient.BeginUpdate(ctx, id.ResourceGroup, diskName, update, nil)
 		if err != nil {
 			return fmt.Errorf("resizing OS Disk %q for Windows Virtual Machine %q (Resource Group %q): %+v", diskName, id.Name, id.ResourceGroup, err)
 		}
 
-		if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
+		if _, err := future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 			return fmt.Errorf("waiting for resize of OS Disk %q for Windows Virtual Machine %q (Resource Group %q): %+v", diskName, id.Name, id.ResourceGroup, err)
 		}
 
@@ -1114,21 +1116,21 @@ func resourceWindowsVirtualMachineUpdate(d *schema.ResourceData, meta interface{
 
 			disksClient := meta.(*clients.Client).Compute.DisksClient
 
-			update := compute.DiskUpdate{
-				DiskUpdateProperties: &compute.DiskUpdateProperties{
-					Encryption: &compute.Encryption{
-						Type:                compute.EncryptionTypeEncryptionAtRestWithCustomerKey,
+			update := armcompute.DiskUpdate{
+				Properties: &armcompute.DiskUpdateProperties{
+					Encryption: &armcompute.Encryption{
+						Type:                armcompute.EncryptionTypeEncryptionAtRestWithCustomerKey.ToPtr(),
 						DiskEncryptionSetID: utils.String(diskEncryptionSetId),
 					},
 				},
 			}
 
-			future, err := disksClient.Update(ctx, id.ResourceGroup, diskName, update)
+			future, err := disksClient.BeginUpdate(ctx, id.ResourceGroup, diskName, update, nil)
 			if err != nil {
 				return fmt.Errorf("updating encryption settings of OS Disk %q for Windows Virtual Machine %q (Resource Group %q): %+v", diskName, id.Name, id.ResourceGroup, err)
 			}
 
-			if err := future.WaitForCompletionRef(ctx, client.Client); err != nil {
+			if _, err := future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 				return fmt.Errorf("waiting to update encryption settings of OS Disk %q for Windows Virtual Machine %q (Resource Group %q): %+v", diskName, id.Name, id.ResourceGroup, err)
 			}
 
@@ -1244,16 +1246,14 @@ func resourceWindowsVirtualMachineDelete(d *schema.ResourceData, meta interface{
 				return err
 			}
 
-			diskDeleteFuture, err := disksClient.Delete(ctx, diskId.ResourceGroup, diskId.DiskName)
+			diskDeleteFuture, err := disksClient.BeginDelete(ctx, diskId.ResourceGroup, diskId.DiskName, nil)
 			if err != nil {
-				if !response.WasNotFound(diskDeleteFuture.Response()) {
+				if !utils.Track2ResponseWasNotFound(err) {
 					return fmt.Errorf("deleting OS Disk %q (Resource Group %q) for Windows Virtual Machine %q (Resource Group %q): %+v", diskId.DiskName, diskId.ResourceGroup, id.Name, id.ResourceGroup, err)
 				}
 			}
-			if !response.WasNotFound(diskDeleteFuture.Response()) {
-				if err := diskDeleteFuture.WaitForCompletionRef(ctx, disksClient.Client); err != nil {
-					return fmt.Errorf("OS Disk %q (Resource Group %q) for Windows Virtual Machine %q (Resource Group %q): %+v", diskId.DiskName, diskId.ResourceGroup, id.Name, id.ResourceGroup, err)
-				}
+			if _, err := diskDeleteFuture.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
+				return fmt.Errorf("OS Disk %q (Resource Group %q) for Windows Virtual Machine %q (Resource Group %q): %+v", diskId.DiskName, diskId.ResourceGroup, id.Name, id.ResourceGroup, err)
 			}
 
 			log.Printf("[DEBUG] Deleted OS Disk from Windows Virtual Machine %q (Resource Group %q).", diskId.DiskName, diskId.ResourceGroup)

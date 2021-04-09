@@ -65,23 +65,24 @@ func dataSourceAvailabilitySetRead(d *schema.ResourceData, meta interface{}) err
 	resGroup := d.Get("resource_group_name").(string)
 	name := d.Get("name").(string)
 
-	resp, err := client.Get(ctx, resGroup, name)
+	resp, err := client.Get(ctx, resGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Availability Set %q (Resource Group %q) was not found", name, resGroup)
 		}
 
 		return fmt.Errorf("Error making Read request on Availability Set %q (Resource Group %q): %+v", name, resGroup, err)
 	}
 
-	d.SetId(*resp.ID)
-	if location := resp.Location; location != nil {
+	set := *resp.AvailabilitySet
+	d.SetId(*set.ID)
+	if location := set.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	if resp.Sku != nil && resp.Sku.Name != nil {
-		d.Set("managed", strings.EqualFold(*resp.Sku.Name, "Aligned"))
+	if set.SKU != nil && set.SKU.Name != nil {
+		d.Set("managed", strings.EqualFold(*set.SKU.Name, "Aligned"))
 	}
-	if props := resp.AvailabilitySetProperties; props != nil {
+	if props := set.Properties; props != nil {
 		if v := props.PlatformUpdateDomainCount; v != nil {
 			d.Set("platform_update_domain_count", strconv.Itoa(int(*v)))
 		}
@@ -89,5 +90,5 @@ func dataSourceAvailabilitySetRead(d *schema.ResourceData, meta interface{}) err
 			d.Set("platform_fault_domain_count", strconv.Itoa(int(*v)))
 		}
 	}
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, set.Tags)
 }

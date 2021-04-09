@@ -2,10 +2,10 @@ package compute
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -62,30 +62,31 @@ func resourceProximityPlacementGroupCreateUpdate(d *schema.ResourceData, meta in
 	resourceGroup := d.Get("resource_group_name").(string)
 
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, resourceGroup, name, "")
+		existing, err := client.Get(ctx, resourceGroup, name, nil)
 		if err != nil {
-			if !utils.ResponseWasNotFound(existing.Response) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("Error checking for presence of existing Proximity Placement Group %q (Resource Group %q): %s", name, resourceGroup, err)
 			}
 		}
 
-		if existing.ID != nil && *existing.ID != "" {
-			return tf.ImportAsExistsError("azurerm_proximity_placement_group", *existing.ID)
+		if existing.ProximityPlacementGroup != nil && existing.ProximityPlacementGroup.ID != nil && *existing.ProximityPlacementGroup.ID != "" {
+			return tf.ImportAsExistsError("azurerm_proximity_placement_group", *existing.ProximityPlacementGroup.ID)
 		}
 	}
 
-	ppg := compute.ProximityPlacementGroup{
-		Name:     &name,
-		Location: utils.String(azure.NormalizeLocation(d.Get("location").(string))),
-		Tags:     tags.Expand(d.Get("tags").(map[string]interface{})),
+	ppg := armcompute.ProximityPlacementGroup{
+		Resource: armcompute.Resource{
+			Location: utils.String(azure.NormalizeLocation(d.Get("location").(string))),
+			Tags:     tags.Track2Expand(d.Get("tags").(map[string]interface{})),
+		},
 	}
 
-	resp, err := client.CreateOrUpdate(ctx, resourceGroup, name, ppg)
+	resp, err := client.CreateOrUpdate(ctx, resourceGroup, name, ppg, nil)
 	if err != nil {
 		return err
 	}
 
-	d.SetId(*resp.ID)
+	d.SetId(*resp.ProximityPlacementGroup.ID)
 
 	return resourceProximityPlacementGroupRead(d, meta)
 }
@@ -102,22 +103,23 @@ func resourceProximityPlacementGroupRead(d *schema.ResourceData, meta interface{
 	resourceGroup := id.ResourceGroup
 	name := id.Path["proximityPlacementGroups"]
 
-	resp, err := client.Get(ctx, resourceGroup, name, "")
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			d.SetId("")
 			return nil
 		}
 		return fmt.Errorf("Error making Read request on Proximity Placement Group %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	d.Set("name", resp.Name)
+	ppg := resp.ProximityPlacementGroup
+	d.Set("name", ppg.Name)
 	d.Set("resource_group_name", resourceGroup)
-	if location := resp.Location; location != nil {
+	if location := ppg.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, ppg.Tags)
 }
 
 func resourceProximityPlacementGroupDelete(d *schema.ResourceData, meta interface{}) error {
@@ -132,6 +134,6 @@ func resourceProximityPlacementGroupDelete(d *schema.ResourceData, meta interfac
 	resGroup := id.ResourceGroup
 	name := id.Path["proximityPlacementGroups"]
 
-	_, err = client.Delete(ctx, resGroup, name)
+	_, err = client.Delete(ctx, resGroup, name, nil)
 	return err
 }

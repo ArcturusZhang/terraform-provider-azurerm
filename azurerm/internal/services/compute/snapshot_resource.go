@@ -2,6 +2,8 @@ package compute
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 	"log"
 	"regexp"
 	"time"
@@ -100,66 +102,68 @@ func resourceSnapshotCreateUpdate(d *schema.ResourceData, meta interface{}) erro
 	t := d.Get("tags").(map[string]interface{})
 
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, resourceGroup, name)
+		existing, err := client.Get(ctx, resourceGroup, name, nil)
 		if err != nil {
-			if !utils.ResponseWasNotFound(existing.Response) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("Error checking for presence of existing Snapshot %q (Resource Group %q): %+v", name, resourceGroup, err)
 			}
 		}
 
-		if existing.ID != nil && *existing.ID != "" {
-			return tf.ImportAsExistsError("azurerm_snapshot", *existing.ID)
+		if existing.Snapshot != nil && existing.Snapshot.ID != nil && *existing.Snapshot.ID != "" {
+			return tf.ImportAsExistsError("azurerm_snapshot", *existing.Snapshot.ID)
 		}
 	}
 
-	properties := compute.Snapshot{
-		Location: utils.String(location),
-		SnapshotProperties: &compute.SnapshotProperties{
-			CreationData: &compute.CreationData{
-				CreateOption: compute.DiskCreateOption(createOption),
+	snapshot := armcompute.Snapshot{
+		Resource: armcompute.Resource{
+			Location: utils.String(location),
+			Tags: tags.Track2Expand(t),
+		},
+		Properties: &armcompute.SnapshotProperties{
+			CreationData: &armcompute.CreationData{
+				CreateOption: armcompute.DiskCreateOption(createOption).ToPtr(),
 			},
 		},
-		Tags: tags.Expand(t),
 	}
 
 	if v, ok := d.GetOk("source_uri"); ok {
-		properties.SnapshotProperties.CreationData.SourceURI = utils.String(v.(string))
+		snapshot.Properties.CreationData.SourceURI = utils.String(v.(string))
 	}
 
 	if v, ok := d.GetOk("source_resource_id"); ok {
-		properties.SnapshotProperties.CreationData.SourceResourceID = utils.String(v.(string))
+		snapshot.Properties.CreationData.SourceResourceID = utils.String(v.(string))
 	}
 
 	if v, ok := d.GetOk("storage_account_id"); ok {
-		properties.SnapshotProperties.CreationData.StorageAccountID = utils.String(v.(string))
+		snapshot.Properties.CreationData.StorageAccountID = utils.String(v.(string))
 	}
 
 	diskSizeGB := d.Get("disk_size_gb").(int)
 	if diskSizeGB > 0 {
-		properties.SnapshotProperties.DiskSizeGB = utils.Int32(int32(diskSizeGB))
+		snapshot.Properties.DiskSizeGB = utils.Int32(int32(diskSizeGB))
 	}
 
 	if v, ok := d.GetOk("encryption_settings"); ok {
 		encryptionSettings := v.([]interface{})
 		settings := encryptionSettings[0].(map[string]interface{})
-		properties.EncryptionSettingsCollection = expandManagedDiskEncryptionSettings(settings)
+		snapshot.Properties.EncryptionSettingsCollection = expandManagedDiskEncryptionSettings(settings)
 	}
 
-	future, err := client.CreateOrUpdate(ctx, resourceGroup, name, properties)
+	future, err := client.BeginCreateOrUpdate(ctx, resourceGroup, name, snapshot, nil)
 	if err != nil {
 		return fmt.Errorf("Error issuing create/update request for Snapshot %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err := future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("Error waiting on create/update future for Snapshot %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	resp, err := client.Get(ctx, resourceGroup, name)
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
 		return fmt.Errorf("Error issuing get request for Snapshot %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	d.SetId(*resp.ID)
+	d.SetId(*resp.Snapshot.ID)
 
 	return resourceSnapshotRead(d, meta)
 }
@@ -177,9 +181,9 @@ func resourceSnapshotRead(d *schema.ResourceData, meta interface{}) error {
 	resourceGroup := id.ResourceGroup
 	name := id.Path["snapshots"]
 
-	resp, err := client.Get(ctx, resourceGroup, name)
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			log.Printf("[INFO] Error reading Snapshot %q - removing from state", d.Id())
 			d.SetId("")
 			return nil
@@ -187,16 +191,19 @@ func resourceSnapshotRead(d *schema.ResourceData, meta interface{}) error {
 
 		return fmt.Errorf("Error making Read request on Snapshot %q: %+v", name, err)
 	}
-
-	d.Set("name", resp.Name)
+	
+	snapshot := resp.Snapshot
+	d.Set("name", snapshot.Name)
 	d.Set("resource_group_name", resourceGroup)
-	if location := resp.Location; location != nil {
+	if location := snapshot.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 
-	if props := resp.SnapshotProperties; props != nil {
+	if props := snapshot.Properties; props != nil {
 		if data := props.CreationData; data != nil {
-			d.Set("create_option", string(data.CreateOption))
+			if data.CreateOption != nil {
+				d.Set("create_option", string(*data.CreateOption))
+			}
 
 			if accountId := data.StorageAccountID; accountId != nil {
 				d.Set("storage_account_id", accountId)
@@ -212,7 +219,7 @@ func resourceSnapshotRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, snapshot.Tags)
 }
 
 func resourceSnapshotDelete(d *schema.ResourceData, meta interface{}) error {
@@ -228,12 +235,12 @@ func resourceSnapshotDelete(d *schema.ResourceData, meta interface{}) error {
 	resourceGroup := id.ResourceGroup
 	name := id.Path["snapshots"]
 
-	future, err := client.Delete(ctx, resourceGroup, name)
+	future, err := client.BeginDelete(ctx, resourceGroup, name, nil)
 	if err != nil {
 		return fmt.Errorf("Error deleting Snapshot: %+v", err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err := future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("Error deleting Snapshot: %+v", err)
 	}
 

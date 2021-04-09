@@ -45,19 +45,19 @@ func dataSourceProximityPlacementGroupRead(d *schema.ResourceData, meta interfac
 	name := d.Get("name").(string)
 	resourceGroup := d.Get("resource_group_name").(string)
 
-	resp, err := client.Get(ctx, resourceGroup, name, "")
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Proximity Placement Group %q (Resource Group %q) was not found", name, resourceGroup)
 		}
 
 		return fmt.Errorf("Error making Read request on Proximity Placement Group %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	d.SetId(*resp.ID)
+	d.SetId(*resp.ProximityPlacementGroup.ID)
 
-	if location := resp.Location; location != nil {
+	if location := resp.ProximityPlacementGroup.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, resp.ProximityPlacementGroup.Tags)
 }

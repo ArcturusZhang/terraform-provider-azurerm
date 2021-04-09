@@ -5,6 +5,8 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 	"log"
 	"strings"
 	"time"
@@ -857,7 +859,7 @@ func resourceVirtualMachineRead(d *schema.ResourceData, meta interface{}) error 
 			}
 
 			if dataDisks := profile.DataDisks; dataDisks != nil {
-				disksInfo := make([]*compute.Disk, len(*dataDisks))
+				disksInfo := make([]*armcompute.Disk, len(*dataDisks))
 				for i, dataDisk := range *dataDisks {
 					diskInfo, err := resourceVirtualMachineGetManagedDiskInfo(d, dataDisk.ManagedDisk, meta)
 					if err != nil {
@@ -1079,12 +1081,12 @@ func resourceVirtualMachineDeleteManagedDisk(d *schema.ResourceData, disk *compu
 	resGroup := id.ResourceGroup
 	name := id.Path["disks"]
 
-	future, err := client.Delete(ctx, resGroup, name)
+	future, err := client.BeginDelete(ctx, resGroup, name, nil)
 	if err != nil {
 		return fmt.Errorf("Error deleting Managed Disk %q (Resource Group %q) %+v", name, resGroup, err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err := future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("Error waiting for deletion of Managed Disk %q (Resource Group %q) %+v", name, resGroup, err)
 	}
 
@@ -1240,7 +1242,7 @@ func flattenAzureRmVirtualMachineOsProfileSecrets(secrets *[]compute.VaultSecret
 	return result
 }
 
-func flattenAzureRmVirtualMachineDataDisk(disks *[]compute.DataDisk, disksInfo []*compute.Disk) interface{} {
+func flattenAzureRmVirtualMachineDataDisk(disks *[]compute.DataDisk, disksInfo []*armcompute.Disk) interface{} {
 	result := make([]interface{}, len(*disks))
 	for i, disk := range *disks {
 		l := make(map[string]interface{})
@@ -1373,7 +1375,7 @@ func flattenAzureRmVirtualMachineOsProfileLinuxConfiguration(config *compute.Lin
 	return []interface{}{result}
 }
 
-func flattenAzureRmVirtualMachineOsDisk(disk *compute.OSDisk, diskInfo *compute.Disk) []interface{} {
+func flattenAzureRmVirtualMachineOsDisk(disk *compute.OSDisk, diskInfo *armcompute.Disk) []interface{} {
 	result := make(map[string]interface{})
 	if disk.Name != nil {
 		result["name"] = *disk.Name
@@ -1406,13 +1408,13 @@ func flattenAzureRmVirtualMachineOsDisk(disk *compute.OSDisk, diskInfo *compute.
 	return []interface{}{result}
 }
 
-func flattenAzureRmVirtualMachineReviseDiskInfo(result map[string]interface{}, diskInfo *compute.Disk) {
+func flattenAzureRmVirtualMachineReviseDiskInfo(result map[string]interface{}, diskInfo *armcompute.Disk) {
 	if diskInfo != nil {
-		if diskInfo.Sku != nil {
-			result["managed_disk_type"] = string(diskInfo.Sku.Name)
+		if diskInfo.SKU != nil && diskInfo.SKU.Name != nil {
+			result["managed_disk_type"] = string(*diskInfo.SKU.Name)
 		}
-		if diskInfo.DiskProperties != nil && diskInfo.DiskProperties.DiskSizeGB != nil {
-			result["disk_size_gb"] = *diskInfo.DiskProperties.DiskSizeGB
+		if diskInfo.Properties != nil && diskInfo.Properties.DiskSizeGB != nil {
+			result["disk_size_gb"] = *diskInfo.Properties.DiskSizeGB
 		}
 	}
 }
@@ -1952,7 +1954,7 @@ func resourceVirtualMachineStorageImageReferenceHash(v interface{}) int {
 	return schema.HashString(buf.String())
 }
 
-func resourceVirtualMachineGetManagedDiskInfo(d *schema.ResourceData, disk *compute.ManagedDiskParameters, meta interface{}) (*compute.Disk, error) {
+func resourceVirtualMachineGetManagedDiskInfo(d *schema.ResourceData, disk *compute.ManagedDiskParameters, meta interface{}) (*armcompute.Disk, error) {
 	client := meta.(*clients.Client).Compute.DisksClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -1969,12 +1971,12 @@ func resourceVirtualMachineGetManagedDiskInfo(d *schema.ResourceData, disk *comp
 
 	resourceGroup := id.ResourceGroup
 	name := id.Path["disks"]
-	diskResp, err := client.Get(ctx, resourceGroup, name)
+	diskResp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Error retrieving Disk %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	return &diskResp, nil
+	return diskResp.Disk, nil
 }
 
 func determineVirtualMachineIPAddress(ctx context.Context, meta interface{}, props *compute.VirtualMachineProperties) (string, error) {

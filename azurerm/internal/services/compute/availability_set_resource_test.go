@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/go-azure-helpers/response"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/acceptance"
@@ -148,12 +147,12 @@ func (AvailabilitySetResource) Exists(ctx context.Context, clients *clients.Clie
 		return nil, err
 	}
 
-	resp, err := clients.Compute.AvailabilitySetsClient.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := clients.Compute.AvailabilitySetsClient.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Compute Availability Set %q", id.String())
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.AvailabilitySet != nil && resp.AvailabilitySet.ID != nil), nil
 }
 
 func (AvailabilitySetResource) Destroy(ctx context.Context, client *clients.Client, state *terraform.InstanceState) (*bool, error) {
@@ -162,9 +161,8 @@ func (AvailabilitySetResource) Destroy(ctx context.Context, client *clients.Clie
 		return nil, err
 	}
 
-	resp, err := client.Compute.AvailabilitySetsClient.Delete(ctx, id.ResourceGroup, id.Name)
-	if err != nil {
-		if !response.WasNotFound(resp.Response) {
+	if _, err := client.Compute.AvailabilitySetsClient.Delete(ctx, id.ResourceGroup, id.Name, nil); err != nil {
+		if !utils.Track2ResponseWasNotFound(err) {
 			return nil, fmt.Errorf("deleting on availSetClient: %+v", err)
 		}
 	}

@@ -74,12 +74,12 @@ func (t DedicatedHostGroupResource) Exists(ctx context.Context, clients *clients
 	resourceGroupName := id.ResourceGroup
 	name := id.Path["hostGroups"]
 
-	resp, err := clients.Compute.DedicatedHostGroupsClient.Get(ctx, resourceGroupName, name, "")
+	resp, err := clients.Compute.DedicatedHostGroupsClient.Get(ctx, resourceGroupName, name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Compute Dedicated Host Group %q", id)
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.DedicatedHostGroup != nil && resp.DedicatedHostGroup.ID != nil), nil
 }
 
 func (DedicatedHostGroupResource) basic(data acceptance.TestData) string {

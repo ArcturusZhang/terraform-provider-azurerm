@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/armcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -14,6 +15,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/meta"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/features"
 	"github.com/terraform-providers/terraform-provider-azurerm/version"
+)
+
+const (
+	DefaultPollingInterval = 2 * time.Second
 )
 
 type ClientOptions struct {

@@ -41,18 +41,19 @@ func dataSourceDiskAccessRead(d *schema.ResourceData, meta interface{}) error {
 	resourceGroup := d.Get("resource_group_name").(string)
 	name := d.Get("name").(string)
 
-	resp, err := client.Get(ctx, resourceGroup, name)
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Disk Access %q (Resource Group %q) was not found", name, resourceGroup)
 		}
 		return fmt.Errorf("Error: Error making Read request on Azure Disk Access %q (Resource Group %q): %s", name, resourceGroup, err)
 	}
 
-	d.SetId(*resp.ID)
+	access := *resp.DiskAccess
+	d.SetId(*access.ID)
 
 	d.Set("name", name)
 	d.Set("resource_group_name", resourceGroup)
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, access.Tags)
 }

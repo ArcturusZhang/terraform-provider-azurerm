@@ -61,22 +61,23 @@ func dataSourceDedicatedHostGroupRead(d *schema.ResourceData, meta interface{}) 
 	name := d.Get("name").(string)
 	resourceGroupName := d.Get("resource_group_name").(string)
 
-	resp, err := client.Get(ctx, resourceGroupName, name, "")
+	resp, err := client.Get(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Dedicated Host Group %q (Resource Group %q) was not found", name, resourceGroupName)
 		}
 		return fmt.Errorf("Error reading Dedicated Host Group %q (Resource Group %q): %+v", name, resourceGroupName, err)
 	}
 
-	d.SetId(*resp.ID)
+	group := *resp.DedicatedHostGroup
+	d.SetId(*group.ID)
 
 	d.Set("name", name)
 	d.Set("resource_group_name", resourceGroupName)
-	if location := resp.Location; location != nil {
+	if location := group.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	if props := resp.DedicatedHostGroupProperties; props != nil {
+	if props := group.Properties; props != nil {
 		platformFaultDomainCount := 0
 		if props.PlatformFaultDomainCount != nil {
 			platformFaultDomainCount = int(*props.PlatformFaultDomainCount)
@@ -84,7 +85,7 @@ func dataSourceDedicatedHostGroupRead(d *schema.ResourceData, meta interface{}) 
 		d.Set("platform_fault_domain_count", platformFaultDomainCount)
 	}
 
-	d.Set("zones", utils.FlattenStringSlice(resp.Zones))
+	d.Set("zones", utils.FlattenStringPtrSlice(group.Zones))
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, group.Tags)
 }

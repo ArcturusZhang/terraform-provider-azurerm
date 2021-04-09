@@ -2,6 +2,7 @@ package compute
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 	"log"
 	"time"
 
@@ -121,7 +122,7 @@ func resourceVirtualMachineDataDiskAttachmentCreateUpdate(d *schema.ResourceData
 		return fmt.Errorf("Error retrieving Managed Disk %q: %+v", managedDiskId, err)
 	}
 
-	if managedDisk.Sku == nil {
+	if managedDisk.SKU == nil {
 		return fmt.Errorf("Error: unable to determine Storage Account Type for Managed Disk %q: %+v", managedDiskId, err)
 	}
 
@@ -139,7 +140,7 @@ func resourceVirtualMachineDataDiskAttachmentCreateUpdate(d *schema.ResourceData
 		Lun:          utils.Int32(lun),
 		ManagedDisk: &compute.ManagedDiskParameters{
 			ID:                 utils.String(managedDiskId),
-			StorageAccountType: compute.StorageAccountTypes(string(managedDisk.Sku.Name)),
+			StorageAccountType: compute.StorageAccountTypes(*managedDisk.SKU.Name),
 		},
 		WriteAcceleratorEnabled: utils.Bool(writeAcceleratorEnabled),
 	}
@@ -304,7 +305,7 @@ func resourceVirtualMachineDataDiskAttachmentDelete(d *schema.ResourceData, meta
 	return nil
 }
 
-func retrieveDataDiskAttachmentManagedDisk(d *schema.ResourceData, meta interface{}, id string) (*compute.Disk, error) {
+func retrieveDataDiskAttachmentManagedDisk(d *schema.ResourceData, meta interface{}, id string) (*armcompute.Disk, error) {
 	client := meta.(*clients.Client).Compute.DisksClient
 	ctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -316,14 +317,14 @@ func retrieveDataDiskAttachmentManagedDisk(d *schema.ResourceData, meta interfac
 	resourceGroup := parsedId.ResourceGroup
 	name := parsedId.Path["disks"]
 
-	resp, err := client.Get(ctx, resourceGroup, name)
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return nil, fmt.Errorf("Error Managed Disk %q (Resource Group %q) was not found!", name, resourceGroup)
 		}
 
 		return nil, fmt.Errorf("Error making Read request on Azure Managed Disk %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	return &resp, nil
+	return resp.Disk, nil
 }

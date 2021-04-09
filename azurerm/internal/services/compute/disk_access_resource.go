@@ -2,10 +2,11 @@ package compute
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/common"
 	"log"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
@@ -64,43 +65,44 @@ func resourceDiskAccessCreateUpdate(d *schema.ResourceData, meta interface{}) er
 	t := d.Get("tags").(map[string]interface{})
 
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, resourceGroup, name)
+		existing, err := client.Get(ctx, resourceGroup, name, nil)
 		if err != nil {
-			if !utils.ResponseWasNotFound(existing.Response) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("Error checking for presence of existing Disk Access %q (Resource Group %q): %s", name, resourceGroup, err)
 			}
 		}
-		if existing.ID != nil && *existing.ID != "" {
-			return tf.ImportAsExistsError("azurerm_disk_access", *existing.ID)
+		if existing.DiskAccess != nil && existing.DiskAccess.ID != nil && *existing.DiskAccess.ID != "" {
+			return tf.ImportAsExistsError("azurerm_disk_access", *existing.DiskAccess.ID)
 		}
 	}
 
 	location := azure.NormalizeLocation(d.Get("location").(string))
 
-	createDiskAccess := compute.DiskAccess{
-		Name:     &name,
-		Location: &location,
-		Tags:     tags.Expand(t),
+	createDiskAccess := armcompute.DiskAccess{
+		Resource: armcompute.Resource{
+			Location: &location,
+			Tags:     tags.Track2Expand(t),
+		},
 	}
 
-	future, err := client.CreateOrUpdate(ctx, resourceGroup, name, createDiskAccess)
+	future, err := client.BeginCreateOrUpdate(ctx, resourceGroup, name, createDiskAccess, nil)
 	if err != nil {
 		return fmt.Errorf("Error creating/updating Disk Access %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err = future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("Error waiting for create/update of Disk Access %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	read, err := client.Get(ctx, resourceGroup, name)
+	read, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
 		return fmt.Errorf("Error retrieving Disk Access %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
-	if read.ID == nil {
+	if read.DiskAccess == nil || read.DiskAccess.ID == nil {
 		return fmt.Errorf("Error reading Disk Access %s (Resource Group %q): ID was nil", name, resourceGroup)
 	}
 
-	d.SetId(*read.ID)
+	d.SetId(*read.DiskAccess.ID)
 
 	return resourceDiskAccessRead(d, meta)
 }
@@ -115,9 +117,9 @@ func resourceDiskAccessRead(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	resp, err := client.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			log.Printf("[INFO] Disk Access %q does not exist - removing from state", d.Id())
 			d.SetId("")
 			return nil
@@ -125,14 +127,15 @@ func resourceDiskAccessRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error making Read request on Azure Disk Access %s (resource group %s): %s", id.Name, id.ResourceGroup, err)
 	}
 
-	d.Set("name", resp.Name)
+	access := *resp.DiskAccess
+	d.Set("name", access.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
 
-	if location := resp.Location; location != nil {
+	if location := access.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, access.Tags)
 }
 
 func resourceDiskAccessDelete(d *schema.ResourceData, meta interface{}) error {
@@ -145,12 +148,12 @@ func resourceDiskAccessDelete(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	future, err := client.Delete(ctx, id.ResourceGroup, id.Name)
+	future, err := client.BeginDelete(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
 		return fmt.Errorf("Error deleting Disk Access %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	if err = future.WaitForCompletionRef(ctx, client.Client); err != nil {
+	if _, err = future.PollUntilDone(ctx, common.DefaultPollingInterval); err != nil {
 		return fmt.Errorf("Error waiting for deletion of Disk Access %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 

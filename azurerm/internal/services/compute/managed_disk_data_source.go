@@ -99,26 +99,29 @@ func dataSourceManagedDiskRead(d *schema.ResourceData, meta interface{}) error {
 	resGroup := d.Get("resource_group_name").(string)
 	name := d.Get("name").(string)
 
-	resp, err := client.Get(ctx, resGroup, name)
+	resp, err := client.Get(ctx, resGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Managed Disk %q (Resource Group %q) was not found", name, resGroup)
 		}
 		return fmt.Errorf("[ERROR] Error making Read request on Azure Managed Disk %q (Resource Group %q): %s", name, resGroup, err)
 	}
 
-	d.SetId(*resp.ID)
+	disk := *resp.Disk
+	d.SetId(*disk.ID)
 
 	d.Set("name", name)
 	d.Set("resource_group_name", resGroup)
 
-	if sku := resp.Sku; sku != nil {
-		d.Set("storage_account_type", string(sku.Name))
+	if sku := disk.SKU; sku != nil {
+		d.Set("storage_account_type", string(*sku.Name))
 	}
 
-	if props := resp.DiskProperties; props != nil {
+	if props := disk.Properties; props != nil {
 		if creationData := props.CreationData; creationData != nil {
-			d.Set("create_option", string(creationData.CreateOption))
+			if creationData.CreateOption != nil {
+				d.Set("create_option", string(*creationData.CreateOption))
+			}
 
 			imageReferenceID := ""
 			if creationData.ImageReference != nil && creationData.ImageReference.ID != nil {
@@ -134,7 +137,9 @@ func dataSourceManagedDiskRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("disk_size_gb", props.DiskSizeGB)
 		d.Set("disk_iops_read_write", props.DiskIOPSReadWrite)
 		d.Set("disk_mbps_read_write", props.DiskMBpsReadWrite)
-		d.Set("os_type", props.OsType)
+		if props.OSType != nil {
+			d.Set("os_type", string(*props.OSType))
+		}
 
 		diskEncryptionSetId := ""
 		if props.Encryption != nil && props.Encryption.DiskEncryptionSetID != nil {
@@ -143,7 +148,7 @@ func dataSourceManagedDiskRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("disk_encryption_set_id", diskEncryptionSetId)
 	}
 
-	d.Set("zones", utils.FlattenStringSlice(resp.Zones))
+	d.Set("zones", utils.FlattenStringPtrSlice(disk.Zones))
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, disk.Tags)
 }

@@ -3,6 +3,7 @@ package compute
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -330,7 +331,7 @@ func expandVirtualMachineOSDisk(input []interface{}, osType compute.OperatingSys
 	return &disk
 }
 
-func flattenVirtualMachineOSDisk(ctx context.Context, disksClient *compute.DisksClient, input *compute.OSDisk) ([]interface{}, error) {
+func flattenVirtualMachineOSDisk(ctx context.Context, disksClient *armcompute.DisksClient, input *compute.OSDisk) ([]interface{}, error) {
 	if input == nil {
 		return []interface{}{}, nil
 	}
@@ -364,10 +365,10 @@ func flattenVirtualMachineOSDisk(ctx context.Context, disksClient *compute.Disks
 				return nil, err
 			}
 
-			disk, err := disksClient.Get(ctx, id.ResourceGroup, id.DiskName)
+			resp, err := disksClient.Get(ctx, id.ResourceGroup, id.DiskName, nil)
 			if err != nil {
 				// turns out ephemeral disks aren't returned/available here
-				if !utils.ResponseWasNotFound(disk.Response) {
+				if !utils.Track2ResponseWasNotFound(err) {
 					return nil, err
 				}
 			}
@@ -375,21 +376,22 @@ func flattenVirtualMachineOSDisk(ctx context.Context, disksClient *compute.Disks
 			// Ephemeral Disks get an ARM ID but aren't available via the regular API
 			// ergo fingers crossed we've got it from the resource because ¯\_(ツ)_/¯
 			// where else we'd be able to pull it from
-			if !utils.ResponseWasNotFound(disk.Response) {
+			if !utils.HTTPResponseWasStatusCode(resp.RawResponse, 400) {
+				disk := resp.Disk
 				// whilst this is available as `input.ManagedDisk.StorageAccountType` it's not returned there
 				// however it's only available there for ephemeral os disks
-				if disk.Sku != nil && storageAccountType == "" {
-					storageAccountType = string(disk.Sku.Name)
+				if disk.SKU != nil && disk.SKU.Name != nil && storageAccountType == "" {
+					storageAccountType = string(*disk.SKU.Name)
 				}
 
 				// same goes for Disk Size GB apparently
-				if diskSizeGb == 0 && disk.DiskProperties != nil && disk.DiskProperties.DiskSizeGB != nil {
-					diskSizeGb = int(*disk.DiskProperties.DiskSizeGB)
+				if diskSizeGb == 0 && disk.Properties != nil && disk.Properties.DiskSizeGB != nil {
+					diskSizeGb = int(*disk.Properties.DiskSizeGB)
 				}
 
 				// same goes for Disk Encryption Set Id apparently
-				if disk.Encryption != nil && disk.Encryption.DiskEncryptionSetID != nil {
-					diskEncryptionSetId = *disk.Encryption.DiskEncryptionSetID
+				if disk.Properties.Encryption != nil && disk.Properties.Encryption.DiskEncryptionSetID != nil {
+					diskEncryptionSetId = *disk.Properties.Encryption.DiskEncryptionSetID
 				}
 			}
 		}

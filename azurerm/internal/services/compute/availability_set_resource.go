@@ -2,12 +2,12 @@ package compute
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/arm/compute/2020-12-01/armcompute"
 	"log"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-12-01/compute"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -103,15 +103,15 @@ func resourceAvailabilitySetCreateUpdate(d *schema.ResourceData, meta interface{
 	resGroup := d.Get("resource_group_name").(string)
 
 	if d.IsNewResource() {
-		existing, err := client.Get(ctx, resGroup, name)
+		existing, err := client.Get(ctx, resGroup, name, nil)
 		if err != nil {
-			if !utils.ResponseWasNotFound(existing.Response) {
+			if !utils.Track2ResponseWasNotFound(err) {
 				return fmt.Errorf("Error checking for presence of existing Availability Set %q (Resource Group %q): %s", name, resGroup, err)
 			}
 		}
 
-		if existing.ID != nil && *existing.ID != "" {
-			return tf.ImportAsExistsError("azurerm_availability_set", *existing.ID)
+		if existing.AvailabilitySet != nil && existing.AvailabilitySet.ID != nil && *existing.AvailabilitySet.ID != "" {
+			return tf.ImportAsExistsError("azurerm_availability_set", *existing.AvailabilitySet.ID)
 		}
 	}
 
@@ -121,35 +121,36 @@ func resourceAvailabilitySetCreateUpdate(d *schema.ResourceData, meta interface{
 	managed := d.Get("managed").(bool)
 	t := d.Get("tags").(map[string]interface{})
 
-	availSet := compute.AvailabilitySet{
-		Name:     &name,
-		Location: &location,
-		AvailabilitySetProperties: &compute.AvailabilitySetProperties{
+	availSet := armcompute.AvailabilitySet{
+		Resource: armcompute.Resource{
+			Location: &location,
+			Tags:     tags.Track2Expand(t),
+		},
+		Properties: &armcompute.AvailabilitySetProperties{
 			PlatformFaultDomainCount:  utils.Int32(int32(faultDomainCount)),
 			PlatformUpdateDomainCount: utils.Int32(int32(updateDomainCount)),
 		},
-		Tags: tags.Expand(t),
 	}
 
 	if v, ok := d.GetOk("proximity_placement_group_id"); ok {
-		availSet.AvailabilitySetProperties.ProximityPlacementGroup = &compute.SubResource{
+		availSet.Properties.ProximityPlacementGroup = &armcompute.SubResource{
 			ID: utils.String(v.(string)),
 		}
 	}
 
 	if managed {
 		n := "Aligned"
-		availSet.Sku = &compute.Sku{
+		availSet.SKU = &armcompute.SKU{
 			Name: &n,
 		}
 	}
 
-	resp, err := client.CreateOrUpdate(ctx, resGroup, name, availSet)
+	resp, err := client.CreateOrUpdate(ctx, resGroup, name, availSet, nil)
 	if err != nil {
 		return err
 	}
 
-	d.SetId(*resp.ID)
+	d.SetId(*resp.AvailabilitySet.ID)
 
 	return resourceAvailabilitySetRead(d, meta)
 }
@@ -164,25 +165,26 @@ func resourceAvailabilitySetRead(d *schema.ResourceData, meta interface{}) error
 		return err
 	}
 
-	resp, err := client.Get(ctx, id.ResourceGroup, id.Name)
+	resp, err := client.Get(ctx, id.ResourceGroup, id.Name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			d.SetId("")
 			return nil
 		}
 		return fmt.Errorf("Error making Read request on Azure Availability Set %q (Resource Group %q): %+v", id.Name, id.ResourceGroup, err)
 	}
 
-	d.Set("name", resp.Name)
+	set := resp.AvailabilitySet
+	d.Set("name", set.Name)
 	d.Set("resource_group_name", id.ResourceGroup)
-	if location := resp.Location; location != nil {
+	if location := set.Location; location != nil {
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
-	if resp.Sku != nil && resp.Sku.Name != nil {
-		d.Set("managed", strings.EqualFold(*resp.Sku.Name, "Aligned"))
+	if set.SKU != nil && set.SKU.Name != nil {
+		d.Set("managed", strings.EqualFold(*set.SKU.Name, "Aligned"))
 	}
 
-	if props := resp.AvailabilitySetProperties; props != nil {
+	if props := set.Properties; props != nil {
 		d.Set("platform_update_domain_count", props.PlatformUpdateDomainCount)
 		d.Set("platform_fault_domain_count", props.PlatformFaultDomainCount)
 
@@ -191,7 +193,7 @@ func resourceAvailabilitySetRead(d *schema.ResourceData, meta interface{}) error
 		}
 	}
 
-	return tags.FlattenAndSet(d, resp.Tags)
+	return tags.Track2FlattenAndSet(d, set.Tags)
 }
 
 func resourceAvailabilitySetDelete(d *schema.ResourceData, meta interface{}) error {
@@ -204,6 +206,6 @@ func resourceAvailabilitySetDelete(d *schema.ResourceData, meta interface{}) err
 		return err
 	}
 
-	_, err = client.Delete(ctx, id.ResourceGroup, id.Name)
+	_, err = client.Delete(ctx, id.ResourceGroup, id.Name, nil)
 	return err
 }

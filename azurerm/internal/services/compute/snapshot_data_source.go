@@ -115,18 +115,21 @@ func dataSourceSnapshotRead(d *schema.ResourceData, meta interface{}) error {
 	resourceGroup := d.Get("resource_group_name").(string)
 	name := d.Get("name").(string)
 
-	resp, err := client.Get(ctx, resourceGroup, name)
+	resp, err := client.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
-		if utils.ResponseWasNotFound(resp.Response) {
+		if utils.Track2ResponseWasNotFound(err) {
 			return fmt.Errorf("Error: Snapshot %q (Resource Group %q) was not found", name, resourceGroup)
 		}
 		return fmt.Errorf("Error loading Snapshot %q (Resource Group %q): %+v", name, resourceGroup, err)
 	}
 
-	d.SetId(*resp.ID)
+	snapshot := resp.Snapshot
+	d.SetId(*snapshot.ID)
 
-	if props := resp.SnapshotProperties; props != nil {
-		d.Set("os_type", string(props.OsType))
+	if props := snapshot.Properties; props != nil {
+		if props.OSType != nil {
+			d.Set("os_type", string(*props.OSType))
+		}
 		d.Set("time_created", props.TimeCreated.String())
 
 		if props.DiskSizeGB != nil {
@@ -138,8 +141,10 @@ func dataSourceSnapshotRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	if data := resp.CreationData; data != nil {
-		d.Set("creation_option", string(data.CreateOption))
+	if data := snapshot.Properties.CreationData; data != nil {
+		if data.CreateOption != nil {
+			d.Set("creation_option", string(*data.CreateOption))
+		}
 		d.Set("source_uri", data.SourceURI)
 		d.Set("source_resource_id", data.SourceResourceID)
 		d.Set("storage_account_id", data.StorageAccountID)

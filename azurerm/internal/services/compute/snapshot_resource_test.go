@@ -187,12 +187,12 @@ func (t SnapshotResource) Exists(ctx context.Context, clients *clients.Client, s
 	resourceGroup := id.ResourceGroup
 	name := id.Path["snapshots"]
 
-	resp, err := clients.Compute.SnapshotsClient.Get(ctx, resourceGroup, name)
+	resp, err := clients.Compute.SnapshotsClient.Get(ctx, resourceGroup, name, nil)
 	if err != nil {
 		return nil, fmt.Errorf("retrieving Compute Shared Image Gallery %q", id)
 	}
 
-	return utils.Bool(resp.ID != nil), nil
+	return utils.Bool(resp.Snapshot != nil && resp.Snapshot.ID != nil), nil
 }
 
 func (SnapshotResource) fromManagedDisk(data acceptance.TestData) string {
