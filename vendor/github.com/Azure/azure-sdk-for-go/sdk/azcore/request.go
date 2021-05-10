@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -43,6 +44,7 @@ const (
 // Request is an abstraction over the creation of an HTTP request as it passes through the pipeline.
 type Request struct {
 	*http.Request
+	body     ReadSeekCloser
 	policies []Policy
 	values   opValues
 }
@@ -180,10 +182,52 @@ func (req *Request) SetBody(body ReadSeekCloser, contentType string) error {
 	if err != nil {
 		return err
 	}
+	// keep a copy of the original body.  this is to handle cases
+	// where req.Body is replaced, e.g. httputil.DumpRequest and friends.
+	req.body = body
 	req.Request.Body = body
 	req.Request.ContentLength = size
 	req.Header.Set(HeaderContentType, contentType)
 	req.Header.Set(HeaderContentLength, strconv.FormatInt(size, 10))
+	return nil
+}
+
+// SetMultipartFormData writes the specified keys/values as multi-part form
+// fields with the specified value.  File content must be specified as a ReadSeekCloser.
+// All other values are treated as string values.
+func (req *Request) SetMultipartFormData(formData map[string]interface{}) error {
+	body := bytes.Buffer{}
+	writer := multipart.NewWriter(&body)
+	for k, v := range formData {
+		if rsc, ok := v.(ReadSeekCloser); ok {
+			// this is the body to upload, the key is its file name
+			fd, err := writer.CreateFormFile(k, k)
+			if err != nil {
+				return err
+			}
+			// copy the data to the form file
+			if _, err = io.Copy(fd, rsc); err != nil {
+				return err
+			}
+			continue
+		}
+		// ensure the value is in string format
+		s, ok := v.(string)
+		if !ok {
+			s = fmt.Sprintf("%v", v)
+		}
+		if err := writer.WriteField(k, s); err != nil {
+			return err
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return err
+	}
+	req.body = NopCloser(bytes.NewReader(body.Bytes()))
+	req.Body = req.body
+	req.ContentLength = int64(body.Len())
+	req.Header.Set(HeaderContentType, writer.FormDataContentType())
+	req.Header.Set(HeaderContentLength, strconv.FormatInt(req.ContentLength, 10))
 	return nil
 }
 
@@ -194,9 +238,10 @@ func (req *Request) SkipBodyDownload() {
 
 // RewindBody seeks the request's Body stream back to the beginning so it can be resent when retrying an operation.
 func (req *Request) RewindBody() error {
-	if req.Body != nil {
-		// Reset the stream back to the beginning
-		_, err := req.Body.(io.Seeker).Seek(0, io.SeekStart)
+	if req.body != nil {
+		// Reset the stream back to the beginning and restore the body
+		_, err := req.body.Seek(0, io.SeekStart)
+		req.Body = req.body
 		return err
 	}
 	return nil
